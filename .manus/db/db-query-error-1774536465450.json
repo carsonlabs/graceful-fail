@@ -1,0 +1,12 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `webhook_endpoints` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `userId` int NOT NULL,\n  `url` text NOT NULL,\n  `secret` varchar(64) NOT NULL,\n  `events` text NOT NULL DEFAULT ('[\"all\"]'),\n  `isActive` boolean NOT NULL DEFAULT true,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `webhook_endpoints_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2VJemZSZ3ks3bBp.05e6da88e31f --database gWqCGEfQHjyCZk9AmeraCf --execute CREATE TABLE IF NOT EXISTS `webhook_endpoints` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `userId` int NOT NULL,\n  `url` text NOT NULL,\n  `secret` varchar(64) NOT NULL,\n  `events` text NOT NULL DEFAULT ('[\"all\"]'),\n  `isActive` boolean NOT NULL DEFAULT true,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `webhook_endpoints_id` PRIMARY KEY(`id`)\n);",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1064 (42000) at line 1: You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 6 column 44 near \"'[\"all\"]'),",
+    "  `isActive` boolean NOT NULL DEFAULT true,",
+    "  `createdAt` timestamp NOT NULL DEFAULT (now()),",
+    "  CONSTRAINT `webhook_endpoints_id` PRIMARY KEY(`id`)",
+    ")\""
+  ]
+}

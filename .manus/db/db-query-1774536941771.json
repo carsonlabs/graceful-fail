@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS webhook_deliveries (\n  id INT AUTO_INCREMENT NOT NULL,\n  endpointId INT NOT NULL,\n  event VARCHAR(64) NOT NULL,\n  payload VARCHAR(4096) NOT NULL,\n  responseStatusCode INT,\n  attempts INT NOT NULL DEFAULT 0,\n  success BOOLEAN NOT NULL DEFAULT FALSE,\n  lastAttemptAt TIMESTAMP NULL,\n  createdAt TIMESTAMP NOT NULL DEFAULT NOW(),\n  CONSTRAINT webhook_deliveries_id PRIMARY KEY (id)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2VJemZSZ3ks3bBp.05e6da88e31f --database gWqCGEfQHjyCZk9AmeraCf --execute CREATE TABLE IF NOT EXISTS webhook_deliveries (\n  id INT AUTO_INCREMENT NOT NULL,\n  endpointId INT NOT NULL,\n  event VARCHAR(64) NOT NULL,\n  payload VARCHAR(4096) NOT NULL,\n  responseStatusCode INT,\n  attempts INT NOT NULL DEFAULT 0,\n  success BOOLEAN NOT NULL DEFAULT FALSE,\n  lastAttemptAt TIMESTAMP NULL,\n  createdAt TIMESTAMP NOT NULL DEFAULT NOW(),\n  CONSTRAINT webhook_deliveries_id PRIMARY KEY (id)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 371
+}

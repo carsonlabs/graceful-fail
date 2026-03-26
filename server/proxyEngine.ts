@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { createHash } from "crypto";
 import { getApiKeyByHash, insertRequestLog, touchApiKeyLastUsed, upsertUsageStat, checkRateLimit } from "./db";
 import { analyzeError } from "./llmAnalysis";
+import { dispatchWebhook } from "./webhookEngine";
 
 /** Build a SHA-256 hash of the raw API key for DB lookup */
 export function hashApiKey(rawKey: string): string {
@@ -39,6 +40,16 @@ export async function proxyHandler(req: Request, res: Response): Promise<void> {
   // ── 2. Rate limit check ──────────────────────────────────────────────────
   const { allowed, used, limit } = await checkRateLimit(apiKey.id, apiKey.tier);
   if (!allowed) {
+    // Fire webhook asynchronously — don't block the response
+    dispatchWebhook(apiKey.userId, "rate_limit", {
+      api_key_id: apiKey.id,
+      api_key_name: apiKey.name,
+      tier: apiKey.tier,
+      used,
+      limit,
+      destination_url: req.headers["x-destination-url"] ?? "unknown",
+    }).catch(() => {});
+
     res.status(429).json({
       error: `Monthly request limit reached. Tier: ${apiKey.tier} (${limit} requests/month). Used: ${used}.`,
       upgrade_url: "https://gracefulfail.com/pricing",
@@ -174,6 +185,20 @@ export async function proxyHandler(req: Request, res: Response): Promise<void> {
       errorSummary: analysis.human_readable_explanation.slice(0, 500),
       isRetriable: analysis.is_retriable,
     });
+
+    // Fire non-retriable webhook asynchronously
+    if (!analysis.is_retriable) {
+      dispatchWebhook(apiKey.userId, "non_retriable_error", {
+        api_key_id: apiKey.id,
+        api_key_name: apiKey.name,
+        destination_url: destinationUrl,
+        method: destinationMethod,
+        status_code: destStatusCode,
+        error_category: analysis.error_category,
+        explanation: analysis.human_readable_explanation,
+        actionable_fix: analysis.actionable_fix_for_agent,
+      }).catch(() => {});
+    }
 
     res.status(destStatusCode).json({
       graceful_fail_intercepted: true,

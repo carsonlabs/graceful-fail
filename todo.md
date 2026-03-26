@@ -49,3 +49,29 @@
 - [x] API key auth middleware test
 - [x] LLM analysis module test (mock invokeLLM)
 - [x] tRPC router tests for apiKeys and dashboard
+
+## Stripe Billing
+- [x] Add Stripe feature scaffold via webdev_add_feature
+- [x] DB: subscriptions table (userId, stripeCustomerId, stripeSubscriptionId, tier, status, currentPeriodEnd)
+- [x] Server: create Stripe checkout session for Pro/Agency upgrade
+- [x] Server: Stripe webhook handler (checkout.session.completed, customer.subscription.updated, customer.subscription.deleted)
+- [x] Server: sync subscription tier to api_keys on upgrade/downgrade
+- [x] Frontend: Upgrade modal/page with tier comparison and Stripe checkout redirect
+- [x] Frontend: Billing status card in dashboard showing current plan and next renewal
+
+## Webhook Notifications
+- [x] DB: webhook_endpoints table (id, userId, url, secret, events[], isActive, createdAt)
+- [x] DB: webhook_deliveries table (id, endpointId, event, payload, statusCode, attempts, lastAttemptAt)
+- [x] Server: webhook delivery engine (send POST with HMAC-SHA256 signature)
+- [x] Server: retry logic (3 attempts with exponential backoff)
+- [x] Server: trigger webhooks on rate_limit and non-retriable error events from proxy engine
+- [x] tRPC: createWebhook, listWebhooks, deleteWebhook, testWebhook procedures
+- [x] Frontend: Webhook settings page (add endpoint, list, delete, test)
+- [x] Frontend: Webhook delivery log per endpoint
+
+## Live API Playground
+- [x] Frontend: Playground page with destination URL, method, headers, body inputs
+- [x] Frontend: Send request through /api/proxy and display structured response
+- [x] Frontend: Diff viewer for suggested_payload_diff
+- [x] Frontend: Copy-to-clipboard for corrected payload
+- [x] Add Playground to sidebar nav

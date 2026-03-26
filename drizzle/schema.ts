@@ -7,6 +7,7 @@ import {
   text,
   timestamp,
   varchar,
+  json,
 } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
@@ -89,3 +90,59 @@ export const usageStats = mysqlTable("usage_stats", {
 
 export type UsageStat = typeof usageStats.$inferSelect;
 export type InsertUsageStat = typeof usageStats.$inferInsert;
+
+// --- Stripe Subscriptions ---
+
+export const subscriptions = mysqlTable("subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 64 }),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 64 }),
+  /** The tier this subscription grants */
+  tier: mysqlEnum("tier", ["hobby", "pro", "agency"]).default("hobby").notNull(),
+  /** active | canceled | past_due | trialing */
+  status: varchar("status", { length: 32 }).default("active").notNull(),
+  currentPeriodEnd: timestamp("currentPeriodEnd"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
+
+// --- Webhook Endpoints ---
+
+export const webhookEndpoints = mysqlTable("webhook_endpoints", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  url: text("url").notNull(),
+  /** HMAC-SHA256 signing secret shown once to user */
+  secret: varchar("secret", { length: 64 }).notNull(),
+  /** JSON array of event types: ["rate_limit", "non_retriable_error", "all"] */
+  events: text("events").notNull().default('["all"]'),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type WebhookEndpoint = typeof webhookEndpoints.$inferSelect;
+export type InsertWebhookEndpoint = typeof webhookEndpoints.$inferInsert;
+
+export const webhookDeliveries = mysqlTable("webhook_deliveries", {
+  id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+  endpointId: int("endpointId").notNull(),
+  /** Event type e.g. "rate_limit" | "non_retriable_error" */
+  event: varchar("event", { length: 64 }).notNull(),
+  /** JSON payload sent */
+  payload: text("payload").notNull(),
+  /** HTTP status code from the endpoint (null if not delivered) */
+  responseStatusCode: int("responseStatusCode"),
+  /** Number of delivery attempts made */
+  attempts: int("attempts").default(0).notNull(),
+  /** Whether delivery ultimately succeeded */
+  success: boolean("success").default(false).notNull(),
+  lastAttemptAt: timestamp("lastAttemptAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
+export type InsertWebhookDelivery = typeof webhookDeliveries.$inferInsert;

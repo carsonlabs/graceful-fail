@@ -1,17 +1,40 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Link, useLocation } from "wouter";
-import { BarChart2, Key, List, LayoutDashboard, LogOut, Zap, ExternalLink } from "lucide-react";
+import {
+  BarChart2,
+  Key,
+  List,
+  LayoutDashboard,
+  LogOut,
+  Zap,
+  CreditCard,
+  Webhook,
+  FlaskConical,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useEffect } from "react";
 
-const NAV_ITEMS = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { href: "/dashboard/keys", label: "API Keys", icon: Key },
-  { href: "/dashboard/logs", label: "Request Logs", icon: List },
-  { href: "/dashboard/usage", label: "Usage & Analytics", icon: BarChart2 },
+const NAV_SECTIONS = [
+  {
+    label: "Proxy",
+    items: [
+      { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+      { href: "/dashboard/keys", label: "API Keys", icon: Key },
+      { href: "/dashboard/logs", label: "Request Logs", icon: List },
+      { href: "/dashboard/usage", label: "Usage & Analytics", icon: BarChart2 },
+      { href: "/dashboard/playground", label: "Playground", icon: FlaskConical },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      { href: "/dashboard/webhooks", label: "Webhooks", icon: Webhook },
+      { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
+    ],
+  },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -56,24 +79,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 py-4 px-3 space-y-0.5">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-            const isActive = location === href;
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-primary font-medium"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                }`}
-              >
-                <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : ""}`} />
+        <nav className="flex-1 py-4 px-3 space-y-4 overflow-y-auto">
+          {NAV_SECTIONS.map(({ label, items }) => (
+            <div key={label}>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-3 mb-1">
                 {label}
-              </Link>
-            );
-          })}
+              </p>
+              <div className="space-y-0.5">
+                {items.map(({ href, label: itemLabel, icon: Icon }) => {
+                  const isActive = location === href;
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                        isActive
+                          ? "bg-sidebar-accent text-sidebar-primary font-medium"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary" : ""}`} />
+                      {itemLabel}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* User footer */}

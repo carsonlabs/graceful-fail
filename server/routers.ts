@@ -1,6 +1,8 @@
 import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 import { createHash, randomBytes } from "crypto";
+import { billingRouter } from "./stripeRouter";
+import { webhooksRouter } from "./webhookRouter";
 import { z } from "zod";
 import {
   createApiKey,
@@ -93,6 +95,8 @@ export const appRouter = router({
   }),
   apiKeys: apiKeysRouter,
   dashboard: dashboardRouter,
+  billing: billingRouter,
+  webhooks: webhooksRouter,
 });
 
 export type AppRouter = typeof appRouter;

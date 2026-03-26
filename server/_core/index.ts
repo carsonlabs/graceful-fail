@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { proxyHandler } from "../proxyEngine";
+import { registerStripeWebhook } from "../stripeRouter";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -36,6 +37,9 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+
+  // Stripe webhook — must be registered BEFORE express.json() with raw body
+  registerStripeWebhook(app);
 
   // Graceful Fail proxy endpoint — raw Express route (needs raw body access)
   app.post("/api/proxy", proxyHandler);

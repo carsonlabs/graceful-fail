@@ -113,3 +113,20 @@
 - [x] Show: total requests (24h), avg proxy latency (24h), avg LLM analysis time (24h), error interception rate
 - [x] Show: system status indicator (operational / degraded)
 - [x] Link from landing page nav and docs page
+
+## Changelog Page
+- [x] /changelog route — public, no auth required
+- [x] Date-stamped release entries with version tags and feature descriptions
+- [x] Link from landing page nav, Docs nav, and dashboard sidebar
+
+## Onboarding Checklist
+- [x] tRPC: getOnboardingStatus — checks if user has API key, made a request, set up a webhook
+- [x] Dismissible checklist card on Dashboard Overview page
+- [x] Steps: Create API key, Make test request in Playground, Set up a webhook, Upgrade to Pro
+- [x] Persist dismissed state per user in DB
+
+## CSV Log Export
+- [x] Server: tRPC exportLogs procedure — returns all logs for user as CSV string
+- [x] Frontend: Export CSV button on Request Logs page
+- [x] Apply current interceptedOnly filter to export
+- [x] Trigger browser download via Blob URL

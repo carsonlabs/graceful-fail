@@ -13,6 +13,9 @@ import {
   getUsageStatsByUserId,
   revokeApiKey,
   getPublicStatus,
+  getOnboardingStatus,
+  dismissOnboarding,
+  getAllRequestLogsForUser,
 } from "./db";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -82,6 +85,38 @@ const dashboardRouter = router({
   usageHistory: protectedProcedure.query(async ({ ctx }) => {
     return getUsageStatsByUserId(ctx.user.id);
   }),
+
+  onboarding: protectedProcedure.query(async ({ ctx }) => {
+    return getOnboardingStatus(ctx.user.id);
+  }),
+
+  dismissOnboarding: protectedProcedure.mutation(async ({ ctx }) => {
+    await dismissOnboarding(ctx.user.id);
+    return { success: true };
+  }),
+
+  exportLogs: protectedProcedure
+    .input(z.object({ interceptedOnly: z.boolean().default(false) }))
+    .query(async ({ ctx, input }) => {
+      const logs = await getAllRequestLogsForUser(ctx.user.id, input.interceptedOnly);
+      // Build CSV string server-side
+      const header = "id,method,destinationUrl,statusCode,wasIntercepted,creditsUsed,durationMs,isRetriable,errorSummary,createdAt";
+      const rows = logs.map((l) =>
+        [
+          l.id,
+          l.method,
+          `"${l.destinationUrl.replace(/"/g, '""')}"`,
+          l.statusCode,
+          l.wasIntercepted ? 1 : 0,
+          l.creditsUsed,
+          l.durationMs,
+          l.isRetriable === null ? "" : l.isRetriable ? 1 : 0,
+          l.errorSummary ? `"${l.errorSummary.replace(/"/g, '""')}"` : "",
+          l.createdAt.toISOString(),
+        ].join(",")
+      );
+      return { csv: [header, ...rows].join("\n"), count: logs.length };
+    }),
 });
 
 export const appRouter = router({

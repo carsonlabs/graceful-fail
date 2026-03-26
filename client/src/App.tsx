@@ -14,6 +14,7 @@ import Webhooks from "./pages/Webhooks";
 import Playground from "./pages/Playground";
 import Docs from "./pages/Docs";
 import StatusPage from "./pages/Status";
+import Changelog from "./pages/Changelog";
 
 function Router() {
   return (
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/dashboard/playground" component={Playground} />
       <Route path="/docs" component={Docs} />
       <Route path="/status" component={StatusPage} />
+      <Route path="/changelog" component={Changelog} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

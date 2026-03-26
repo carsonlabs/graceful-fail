@@ -1,7 +1,7 @@
 import AppLayout from "@/components/AppLayout";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart2, Zap, AlertTriangle, CheckCircle2, Key, ArrowRight } from "lucide-react";
+import { BarChart2, Zap, AlertTriangle, CheckCircle2, Key, ArrowRight, X, FlaskConical, Webhook, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 
@@ -9,6 +9,48 @@ export default function Dashboard() {
   const { data: stats, isLoading } = trpc.dashboard.stats.useQuery();
   const { data: keysData } = trpc.apiKeys.list.useQuery();
   const { data: logsData } = trpc.dashboard.requestLogs.useQuery({ limit: 5, offset: 0 });
+  const { data: onboarding, refetch: refetchOnboarding } = trpc.dashboard.onboarding.useQuery();
+  const dismissMutation = trpc.dashboard.dismissOnboarding.useMutation({
+    onSuccess: () => refetchOnboarding(),
+  });
+
+  const onboardingSteps = [
+    {
+      id: "apiKey",
+      label: "Create an API key",
+      done: onboarding?.hasApiKey ?? false,
+      href: "/dashboard/keys",
+      icon: Key,
+      cta: "Go to API Keys",
+    },
+    {
+      id: "request",
+      label: "Make a test request in the Playground",
+      done: onboarding?.hasMadeRequest ?? false,
+      href: "/dashboard/playground",
+      icon: FlaskConical,
+      cta: "Open Playground",
+    },
+    {
+      id: "webhook",
+      label: "Set up a webhook notification",
+      done: onboarding?.hasWebhook ?? false,
+      href: "/dashboard/webhooks",
+      icon: Webhook,
+      cta: "Configure Webhooks",
+    },
+    {
+      id: "upgrade",
+      label: "Upgrade to Pro for 10k requests/month",
+      done: false,
+      href: "/dashboard/billing",
+      icon: CreditCard,
+      cta: "View Billing",
+    },
+  ];
+  const completedSteps = onboardingSteps.filter((s) => s.done).length;
+  const allDone = completedSteps === onboardingSteps.length;
+  const showChecklist = onboarding && !onboarding.isDismissed && !allDone;
 
   const statCards = [
     {
@@ -174,6 +216,75 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Onboarding Checklist */}
+        {showChecklist && (
+          <Card className="bg-card border-primary/30 border mt-6 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+            <CardHeader className="px-5 pt-5 pb-3 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-primary" />
+                  Getting Started
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {completedSteps} of {onboardingSteps.length} steps complete
+                </p>
+              </div>
+              <button
+                onClick={() => dismissMutation.mutate()}
+                className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded"
+                title="Dismiss"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </CardHeader>
+            <CardContent className="px-5 pb-5">
+              {/* Progress bar */}
+              <div className="w-full bg-muted rounded-full h-1.5 mb-5">
+                <div
+                  className="bg-primary h-1.5 rounded-full transition-all duration-500"
+                  style={{ width: `${(completedSteps / onboardingSteps.length) * 100}%` }}
+                />
+              </div>
+              <div className="space-y-3">
+                {onboardingSteps.map((step) => (
+                  <div key={step.id} className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                          step.done
+                            ? "bg-emerald-500/20 text-emerald-400"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {step.done ? (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        ) : (
+                          <step.icon className="w-3.5 h-3.5" />
+                        )}
+                      </div>
+                      <span
+                        className={`text-sm ${
+                          step.done ? "line-through text-muted-foreground" : "text-foreground"
+                        }`}
+                      >
+                        {step.label}
+                      </span>
+                    </div>
+                    {!step.done && (
+                      <Link href={step.href}>
+                        <Button variant="outline" size="sm" className="text-xs shrink-0 gap-1">
+                          {step.cta} <ArrowRight className="w-3 h-3" />
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Quick start guide */}
         <Card className="bg-card border-border mt-6">

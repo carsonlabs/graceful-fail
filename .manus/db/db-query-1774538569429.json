@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `users` ADD `onboardingDismissed` boolean DEFAULT false NOT NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2VJemZSZ3ks3bBp.05e6da88e31f --database gWqCGEfQHjyCZk9AmeraCf --execute ALTER TABLE `users` ADD `onboardingDismissed` boolean DEFAULT false NOT NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1216
+}

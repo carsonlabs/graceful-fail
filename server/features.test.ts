@@ -221,3 +221,68 @@ describe("webhook signature", () => {
     expect(sig1).not.toBe(sig2);
   });
 });
+
+// ── Onboarding router ─────────────────────────────────────────────────────────
+
+describe("dashboard.onboarding", () => {
+  it("returns default false values when DB is unavailable", async () => {
+    const ctx = createMockContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.dashboard.onboarding();
+    expect(result).toEqual({
+      hasApiKey: false,
+      hasMadeRequest: false,
+      hasWebhook: false,
+      isDismissed: false,
+    });
+  });
+
+  it("requires authentication", async () => {
+    const ctx = createMockContext({ user: null });
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.dashboard.onboarding()).rejects.toThrow(/login|unauthorized/i);
+  });
+});
+
+describe("dashboard.dismissOnboarding", () => {
+  it("returns success when DB is unavailable (no-op)", async () => {
+    const ctx = createMockContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.dashboard.dismissOnboarding();
+    expect(result).toEqual({ success: true });
+  });
+
+  it("requires authentication", async () => {
+    const ctx = createMockContext({ user: null });
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.dashboard.dismissOnboarding()).rejects.toThrow(/login|unauthorized/i);
+  });
+});
+
+// ── CSV export router ─────────────────────────────────────────────────────────
+
+describe("dashboard.exportLogs", () => {
+  it("returns empty CSV with header when DB is unavailable", async () => {
+    const ctx = createMockContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.dashboard.exportLogs({ interceptedOnly: false });
+    expect(result.count).toBe(0);
+    expect(result.csv).toContain("id,method,destinationUrl");
+  });
+
+  it("returns CSV with only intercepted logs when interceptedOnly=true", async () => {
+    const ctx = createMockContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.dashboard.exportLogs({ interceptedOnly: true });
+    expect(result.count).toBe(0);
+    expect(result.csv).toContain("id,method,destinationUrl");
+  });
+
+  it("requires authentication", async () => {
+    const ctx = createMockContext({ user: null });
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.dashboard.exportLogs({ interceptedOnly: false })).rejects.toThrow(
+      /login|unauthorized/i
+    );
+  });
+});

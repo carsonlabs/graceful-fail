@@ -13,6 +13,7 @@ import {
   FlaskConical,
   BookOpen,
   Activity,
+  BookMarked,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
@@ -35,6 +36,7 @@ const NAV_SECTIONS = [
     items: [
       { href: "/docs", label: "API Docs", icon: BookOpen },
       { href: "/status", label: "System Status", icon: Activity },
+      { href: "/changelog", label: "Changelog", icon: BookMarked },
     ],
   },
   {

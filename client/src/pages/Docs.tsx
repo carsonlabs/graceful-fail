@@ -208,6 +208,9 @@ export default function Docs() {
             <Link href="/status" className="text-xs text-muted-foreground hover:text-foreground transition-colors hidden md:block">
               System Status
             </Link>
+            <Link href="/changelog" className="text-xs text-muted-foreground hover:text-foreground transition-colors hidden md:block">
+              Changelog
+            </Link>
             <Link href="/dashboard/playground">
               <Button variant="outline" size="sm" className="gap-1.5 text-xs">
                 <ExternalLink className="w-3 h-3" />

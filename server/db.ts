@@ -9,6 +9,7 @@ import {
   requestLogs,
   usageStats,
   users,
+  webhookEndpoints,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -294,4 +295,45 @@ export async function getPublicStatus() {
     avgLlmLatencyMs: avgLlm,
     interceptionRate,
   };
+}
+
+// ── Onboarding ────────────────────────────────────────────────────────────────
+
+export async function getOnboardingStatus(userId: number) {
+  const db = await getDb();
+  if (!db) return { hasApiKey: false, hasMadeRequest: false, hasWebhook: false, isDismissed: false };
+
+  const [keyRows, logRows, webhookRows, userRows] = await Promise.all([
+    db.select({ id: apiKeys.id }).from(apiKeys).where(and(eq(apiKeys.userId, userId), eq(apiKeys.isActive, true))).limit(1),
+    db.select({ id: requestLogs.id }).from(requestLogs).where(eq(requestLogs.userId, userId)).limit(1),
+    db.select({ id: webhookEndpoints.id }).from(webhookEndpoints).where(and(eq(webhookEndpoints.userId, userId), eq(webhookEndpoints.isActive, true))).limit(1),
+    db.select({ onboardingDismissed: users.onboardingDismissed }).from(users).where(eq(users.id, userId)).limit(1),
+  ]);
+
+  return {
+    hasApiKey: keyRows.length > 0,
+    hasMadeRequest: logRows.length > 0,
+    hasWebhook: webhookRows.length > 0,
+    isDismissed: userRows[0]?.onboardingDismissed ?? false,
+  };
+}
+
+export async function dismissOnboarding(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ onboardingDismissed: true }).where(eq(users.id, userId));
+}
+
+export async function getAllRequestLogsForUser(userId: number, interceptedOnly: boolean) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = interceptedOnly
+    ? and(eq(requestLogs.userId, userId), eq(requestLogs.wasIntercepted, true))
+    : eq(requestLogs.userId, userId);
+  return db
+    .select()
+    .from(requestLogs)
+    .where(conditions)
+    .orderBy(desc(requestLogs.createdAt))
+    .limit(10000);
 }

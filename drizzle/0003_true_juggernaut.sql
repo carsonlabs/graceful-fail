@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `onboardingDismissed` boolean DEFAULT false NOT NULL;

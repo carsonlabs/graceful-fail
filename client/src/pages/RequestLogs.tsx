@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, ChevronRight, AlertTriangle, CheckCircle2, List } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertTriangle, CheckCircle2, List, Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const PAGE_SIZE = 20;
 
@@ -30,6 +31,27 @@ function methodColor(method: string) {
 export default function RequestLogs() {
   const [page, setPage] = useState(0);
   const [interceptedOnly, setInterceptedOnly] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const utils = trpc.useUtils();
+
+  async function handleExportCsv() {
+    setExporting(true);
+    try {
+      const result = await utils.dashboard.exportLogs.fetch({ interceptedOnly });
+      const blob = new Blob([result.csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `graceful-fail-logs${interceptedOnly ? "-errors" : ""}-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${result.count} request${result.count !== 1 ? "s" : ""} to CSV`);
+    } catch {
+      toast.error("Export failed. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const { data, isLoading } = trpc.dashboard.requestLogs.useQuery({
     limit: PAGE_SIZE,
@@ -58,6 +80,20 @@ export default function RequestLogs() {
               checked={interceptedOnly}
               onCheckedChange={(v) => { setInterceptedOnly(v); setPage(0); }}
             />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCsv}
+              disabled={exporting || !data?.total}
+              className="gap-1.5 text-xs"
+            >
+              {exporting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5" />
+              )}
+              Export CSV
+            </Button>
           </div>
         </div>
 

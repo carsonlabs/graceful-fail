@@ -170,6 +170,36 @@ export default function Playground() {
   const isIntercepted = result?.graceful_fail_intercepted === true;
   const isPassthrough = result && !isIntercepted;
 
+  const buildCurlCommand = () => {
+    const hasBody = ["POST", "PUT", "PATCH"].includes(method);
+    const lines: string[] = [
+      `curl -X POST ${window.location.origin}/api/proxy \\`,
+      `  -H "Authorization: Bearer ${apiKey.trim() || "gf_your_key_here"}" \\`,
+      `  -H "X-Destination-URL: ${destinationUrl}" \\`,
+      `  -H "X-Destination-Method: ${method}" \\`,
+      `  -H "Content-Type: application/json"`,
+    ];
+    if (extraHeaders.trim()) {
+      for (const line of extraHeaders.split("\n")) {
+        const idx = line.indexOf(":");
+        if (idx > 0) {
+          lines[lines.length - 1] += " \\";
+          lines.push(`  -H "${line.trim()}"`);
+        }
+      }
+    }
+    if (hasBody && body.trim()) {
+      lines[lines.length - 1] += " \\";
+      lines.push(`  -d '${body.replace(/'/g, "'\\''")}' `);
+    }
+    return lines.join("\n");
+  };
+
+  const copyCurl = () => {
+    navigator.clipboard.writeText(buildCurlCommand());
+    toast.success("cURL command copied to clipboard!");
+  };
+
   return (
     <AppLayout>
       <div className="p-8">
@@ -263,17 +293,28 @@ export default function Playground() {
                   />
                 </div>
 
-                <Button
-                  className="w-full gap-2"
-                  onClick={handleRun}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>
-                  ) : (
-                    <><Play className="w-4 h-4" /> Run Request</>
-                  )}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 gap-2"
+                    onClick={handleRun}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</>
+                    ) : (
+                      <><Play className="w-4 h-4" /> Run Request</>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="gap-1.5 shrink-0"
+                    onClick={copyCurl}
+                    title="Copy as cURL command"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    cURL
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 

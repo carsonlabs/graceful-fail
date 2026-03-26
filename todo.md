@@ -75,3 +75,22 @@
 - [x] Frontend: Diff viewer for suggested_payload_diff
 - [x] Frontend: Copy-to-clipboard for corrected payload
 - [x] Add Playground to sidebar nav
+
+## Public API Docs Page
+- [x] /docs route — public-facing, no auth required
+- [x] Hero section with endpoint reference (POST /api/proxy)
+- [x] Required headers table (Authorization, X-Destination-URL, X-Destination-Method)
+- [x] Full JSON response schema for intercepted errors and pass-through
+- [x] Code snippet generator with tabs: curl, Python, Node.js, TypeScript
+- [x] Error category reference table
+- [x] Link from landing page and dashboard sidebar
+
+## Email Alerts for Failed Webhook Deliveries
+- [x] Server: detect all-retries-exhausted in webhookEngine.ts
+- [x] Server: call notifyOwner when delivery fails all 3 attempts
+- [x] Include endpoint URL, event type, last HTTP status in notification
+
+## Copy as cURL in Playground
+- [x] Add "Copy as cURL" button to Playground request panel
+- [x] Build curl command string from current method, URL, headers, body, and API key
+- [x] Toast confirmation on copy

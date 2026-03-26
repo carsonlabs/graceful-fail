@@ -2,6 +2,7 @@ import { createHmac } from "crypto";
 import { eq, and } from "drizzle-orm";
 import { getDb } from "./db";
 import { webhookEndpoints, webhookDeliveries } from "../drizzle/schema";
+import { notifyOwner } from "./_core/notification";
 
 export type WebhookEvent = "rate_limit" | "non_retriable_error" | "all";
 
@@ -132,6 +133,22 @@ export async function dispatchWebhook(
       console.warn(
         `[Webhook] Failed to deliver ${event} to endpoint ${endpoint.id} after 3 attempts (last status: ${lastStatusCode})`
       );
+      // Notify the project owner so no critical agent failure goes unnoticed
+      try {
+        await notifyOwner({
+          title: `⚠️ Webhook delivery failed: ${event}`,
+          content:
+            `All 3 delivery attempts exhausted for webhook endpoint:\n` +
+            `URL: ${endpoint.url}\n` +
+            `Event: ${event}\n` +
+            `Last HTTP status: ${lastStatusCode ?? "no response (timeout/network error)"}\n` +
+            `Delivery ID: ${deliveryId}\n` +
+            `Time: ${new Date().toISOString()}\n\n` +
+            `Check the Webhooks page in your Graceful Fail dashboard for details and to re-test the endpoint.`,
+        });
+      } catch (notifyErr) {
+        console.warn("[Webhook] Failed to send owner notification:", notifyErr);
+      }
     }
   }
 }

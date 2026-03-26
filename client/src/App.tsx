@@ -12,6 +12,7 @@ import UsageAnalytics from "./pages/UsageAnalytics";
 import Billing from "./pages/Billing";
 import Webhooks from "./pages/Webhooks";
 import Playground from "./pages/Playground";
+import Docs from "./pages/Docs";
 
 function Router() {
   return (
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/dashboard/billing" component={Billing} />
       <Route path="/dashboard/webhooks" component={Webhooks} />
       <Route path="/dashboard/playground" component={Playground} />
+      <Route path="/docs" component={Docs} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

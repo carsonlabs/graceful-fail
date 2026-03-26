@@ -11,6 +11,7 @@ import {
   CreditCard,
   Webhook,
   FlaskConical,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
@@ -26,6 +27,12 @@ const NAV_SECTIONS = [
       { href: "/dashboard/logs", label: "Request Logs", icon: List },
       { href: "/dashboard/usage", label: "Usage & Analytics", icon: BarChart2 },
       { href: "/dashboard/playground", label: "Playground", icon: FlaskConical },
+    ],
+  },
+  {
+    label: "Resources",
+    items: [
+      { href: "/docs", label: "API Docs", icon: BookOpen },
     ],
   },
   {

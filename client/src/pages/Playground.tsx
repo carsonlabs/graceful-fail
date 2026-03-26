@@ -17,7 +17,10 @@ import {
   Loader2,
   FlaskConical,
   Share2,
+  Webhook,
+  Send,
 } from "lucide-react";
+import { useState as useTabState } from "react";
 import {
   Select,
   SelectContent,
@@ -96,6 +99,7 @@ function readQueryParams() {
 
 export default function Playground() {
   const initial = readQueryParams();
+  const [activeTab, setActiveTab] = useTabState<"proxy" | "webhook">("proxy");
   const [destinationUrl, setDestinationUrl] = useState(initial.destinationUrl);
   const [method, setMethod] = useState<string>(initial.method);
   const [body, setBody] = useState(initial.body);
@@ -103,6 +107,31 @@ export default function Playground() {
   const [apiKey, setApiKey] = useState("");
   const [result, setResult] = useState<PlaygroundResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // Webhook dry-run state
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookPayload, setWebhookPayload] = useState(() =>
+    JSON.stringify({
+      event: "non_retriable_error",
+      timestamp: new Date().toISOString(),
+      data: {
+        request_id: "dry_run_sample",
+        destination_url: "https://api.example.com/endpoint",
+        method: "POST",
+        status_code: 422,
+        error_category: "validation_error",
+        is_retriable: false,
+        actionable_fix_for_agent: "This is a dry-run test payload from Graceful Fail Playground.",
+      },
+    }, null, 2)
+  );
+  const [webhookResult, setWebhookResult] = useState<{
+    success: boolean; statusCode: number; statusText: string;
+    responseMs: number; responseBody: string; payloadSent: string;
+  } | null>(null);
+  const webhookDryRun = trpc.playground.webhookDryRun.useMutation({
+    onSuccess: (data) => setWebhookResult(data),
+    onError: (err) => toast.error("Dry-run failed: " + err.message),
+  });
   const [rawExpanded, setRawExpanded] = useState(false);
   const [durationMs, setDurationMs] = useState<number | null>(null);
 
@@ -232,23 +261,136 @@ export default function Playground() {
   return (
     <AppLayout>
       <div className="p-8">
-        <div className="mb-8 flex items-start justify-between gap-4">
+        <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <FlaskConical className="w-6 h-6 text-primary" />
-              API Playground
+              Playground
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Test any API through the Graceful Fail proxy and see the LLM error analysis in real time
+              Test the proxy or fire a webhook dry-run directly from the browser
             </p>
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5 shrink-0" onClick={copyShareLink}>
-            <Share2 className="w-3.5 h-3.5" />
-            Share
-          </Button>
+          {activeTab === "proxy" && (
+            <Button variant="outline" size="sm" className="gap-1.5 shrink-0" onClick={copyShareLink}>
+              <Share2 className="w-3.5 h-3.5" />
+              Share
+            </Button>
+          )}
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
+        {/* Tab switcher */}
+        <div className="flex gap-1 mb-6 bg-muted/40 rounded-lg p-1 w-fit">
+          <button
+            onClick={() => setActiveTab("proxy")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === "proxy"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <FlaskConical className="w-3.5 h-3.5" />
+            API Proxy Tester
+          </button>
+          <button
+            onClick={() => setActiveTab("webhook")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === "webhook"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Webhook className="w-3.5 h-3.5" />
+            Webhook Dry-Run
+          </button>
+        </div>
+
+        {activeTab === "webhook" && (
+          <div className="max-w-2xl space-y-5">
+            <Card className="bg-card border-border">
+              <CardHeader className="px-5 py-4 pb-3">
+                <CardTitle className="text-sm font-semibold">Webhook Endpoint</CardTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Fire a sample <code className="font-mono bg-muted px-1 rounded">non_retriable_error</code> payload to any URL and inspect the response. Use this to verify your endpoint before going live.
+                </p>
+              </CardHeader>
+              <CardContent className="px-5 pb-5 space-y-4">
+                <div>
+                  <Label className="text-xs">Target Webhook URL</Label>
+                  <Input
+                    placeholder="https://your-server.com/webhook"
+                    value={webhookUrl}
+                    onChange={(e) => setWebhookUrl(e.target.value)}
+                    className="mt-1 font-mono text-xs"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Custom Payload Override <span className="text-muted-foreground">(optional — leave blank to use default sample)</span></Label>
+                  <Textarea
+                    placeholder={'{ "event": "non_retriable_error", ... }'}
+                    value={webhookPayload}
+                    onChange={(e) => setWebhookPayload(e.target.value)}
+                    className="mt-1 font-mono text-xs h-32 resize-none"
+                  />
+                </div>
+                <Button
+                  onClick={() => {
+                    if (!webhookUrl.trim()) return toast.error("Enter a webhook URL first");
+                    setWebhookResult(null);
+                    webhookDryRun.mutate({ url: webhookUrl.trim(), payload: webhookPayload.trim() || undefined });
+                  }}
+                  disabled={webhookDryRun.isPending}
+                  className="w-full gap-2"
+                >
+                  {webhookDryRun.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {webhookDryRun.isPending ? "Sending..." : "Fire Dry-Run"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {webhookResult && (
+              <Card className="bg-card border-border">
+                <CardHeader className="px-5 py-4 pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold">Response</CardTitle>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-muted-foreground">{webhookResult.responseMs}ms</span>
+                      <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                        webhookResult.statusCode >= 200 && webhookResult.statusCode < 300
+                          ? "bg-emerald-500/15 text-emerald-400"
+                          : webhookResult.statusCode === 0
+                          ? "bg-red-500/15 text-red-400"
+                          : "bg-amber-500/15 text-amber-400"
+                      }`}>
+                        {webhookResult.statusCode === 0 ? (
+                          <><XCircle className="w-3 h-3" /> Connection Failed</>
+                        ) : (
+                          <><CheckCircle2 className="w-3 h-3" /> {webhookResult.statusCode} {webhookResult.statusText}</>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="px-5 pb-5 space-y-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Response Body</p>
+                    <pre className="bg-background rounded-md p-3 text-xs font-mono text-foreground overflow-auto max-h-48 border border-border whitespace-pre-wrap break-all">
+                      {webhookResult.responseBody || "(empty body)"}
+                    </pre>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Payload Sent</p>
+                    <pre className="bg-background rounded-md p-3 text-xs font-mono text-muted-foreground overflow-auto max-h-48 border border-border whitespace-pre-wrap break-all">
+                      {(() => { try { return JSON.stringify(JSON.parse(webhookResult.payloadSent), null, 2); } catch { return webhookResult.payloadSent; } })()}
+                    </pre>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {activeTab === "proxy" && <div className="grid lg:grid-cols-2 gap-6">
           {/* ── Left: Request builder ── */}
           <div className="space-y-5">
             <Card className="bg-card border-border">
@@ -495,7 +637,7 @@ export default function Playground() {
               </CardContent>
             </Card>
           </div>
-        </div>
+        </div>}
       </div>
     </AppLayout>
   );

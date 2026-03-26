@@ -14,11 +14,15 @@ import {
   BookOpen,
   Activity,
   BookMarked,
+  Share2,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useEffect } from "react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const NAV_SECTIONS = [
   {
@@ -40,16 +44,23 @@ const NAV_SECTIONS = [
     ],
   },
   {
+    label: "Account",
+    items: [
+      { href: "/dashboard/referral", label: "Referral Program", icon: Share2 },
+      { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
+    ],
+  },
+  {
     label: "Settings",
     items: [
       { href: "/dashboard/webhooks", label: "Webhooks", icon: Webhook },
-      { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
     ],
   },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, isAuthenticated } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [location, navigate] = useLocation();
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
@@ -130,6 +141,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <p className="text-xs text-muted-foreground truncate">{user?.email ?? ""}</p>
             </div>
           </div>
+          {toggleTheme && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start text-muted-foreground hover:text-foreground text-xs gap-2 mb-0.5"
+              onClick={toggleTheme}
+            >
+              {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+              {theme === "dark" ? "Light mode" : "Dark mode"}
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"

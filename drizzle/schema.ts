@@ -147,3 +147,34 @@ export const webhookDeliveries = mysqlTable("webhook_deliveries", {
 
 export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
 export type InsertWebhookDelivery = typeof webhookDeliveries.$inferInsert;
+
+// --- Referrals ---
+
+export const referrals = mysqlTable("referrals", {
+  id: int("id").autoincrement().primaryKey(),
+  /** The user who shared the referral link */
+  referrerId: int("referrerId").notNull(),
+  /** Unique short code embedded in the referral URL */
+  code: varchar("code", { length: 16 }).notNull().unique(),
+  /** The user who signed up via this code (null until redeemed) */
+  referredUserId: int("referredUserId"),
+  /** Whether bonus credits have been awarded to both parties */
+  bonusAwarded: boolean("bonusAwarded").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  redeemedAt: timestamp("redeemedAt"),
+});
+
+export type Referral = typeof referrals.$inferSelect;
+export type InsertReferral = typeof referrals.$inferInsert;
+
+export const bonusCredits = mysqlTable("bonus_credits", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  credits: int("credits").notNull(),
+  /** Human-readable reason e.g. "referral_referrer" | "referral_referee" */
+  reason: varchar("reason", { length: 64 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type BonusCredit = typeof bonusCredits.$inferSelect;
+export type InsertBonusCredit = typeof bonusCredits.$inferInsert;

@@ -130,3 +130,25 @@
 - [x] Frontend: Export CSV button on Request Logs page
 - [x] Apply current interceptedOnly filter to export
 - [x] Trigger browser download via Blob URL
+
+## Referral / Invite Link System
+- [x] DB: referrals table (id, referrerId, referredUserId, code, bonusCreditsAwarded, createdAt)
+- [x] DB: bonus_credits table (id, userId, credits, reason, createdAt)
+- [x] Server: generate unique referral code per user
+- [x] Server: tRPC getReferralCode, getReferralStats procedures
+- [x] Server: apply 100 bonus credits to both parties on successful referral signup
+- [x] Frontend: Referral page at /dashboard/referral with shareable link + stats
+- [x] Frontend: Link in sidebar under Account section
+
+## Dark/Light Theme Toggle
+- [x] Theme toggle button in dashboard sidebar (bottom)
+- [x] Theme toggle button in landing page nav
+- [x] Persist theme choice in localStorage
+- [x] Ensure all pages (Docs, Status, Changelog) respect theme
+
+## Webhook Dry-Run Tester in Playground
+- [x] Add "Test Webhook" tab/section to Playground page
+- [x] Input: target webhook URL + optional custom payload override
+- [x] Server: tRPC testWebhookDryRun procedure — POST sample payload to URL, return status + response body
+- [x] Frontend: Show HTTP status, response time, and response body
+- [x] Pre-fill with sample non_retriable_error payload

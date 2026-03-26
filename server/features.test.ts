@@ -286,3 +286,100 @@ describe("dashboard.exportLogs", () => {
     );
   });
 });
+
+// ── Referral router ───────────────────────────────────────────────────────────
+
+describe("referrals.getCode", () => {
+  it("returns null code when DB is unavailable", async () => {
+    const ctx = createMockContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.referrals.getCode();
+    expect(result).toEqual({ code: null });
+  });
+
+  it("requires authentication", async () => {
+    const ctx = createMockContext({ user: null });
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.referrals.getCode()).rejects.toThrow(/login|unauthorized/i);
+  });
+});
+
+describe("referrals.getStats", () => {
+  it("returns zero stats when DB is unavailable", async () => {
+    const ctx = createMockContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.referrals.getStats();
+    expect(result.totalReferrals).toBe(0);
+    expect(result.bonusCreditsEarned).toBe(0);
+  });
+
+  it("requires authentication", async () => {
+    const ctx = createMockContext({ user: null });
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.referrals.getStats()).rejects.toThrow(/login|unauthorized/i);
+  });
+});
+
+describe("referrals.redeem", () => {
+  it("returns invalid_code when DB is unavailable", async () => {
+    const ctx = createMockContext({ user: null });
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.referrals.redeem({ code: "TESTCODE", newUserId: 99 });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects empty code", async () => {
+    const ctx = createMockContext({ user: null });
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.referrals.redeem({ code: "", newUserId: 1 })).rejects.toThrow();
+  });
+});
+
+describe("referrals.getBonusBalance", () => {
+  it("returns zero balance when DB is unavailable", async () => {
+    const ctx = createMockContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.referrals.getBonusBalance();
+    expect(result.balance).toBe(0);
+  });
+
+  it("requires authentication", async () => {
+    const ctx = createMockContext({ user: null });
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.referrals.getBonusBalance()).rejects.toThrow(/login|unauthorized/i);
+  });
+});
+
+// ── Playground webhook dry-run ────────────────────────────────────────────────
+
+describe("playground.webhookDryRun", () => {
+  it("rejects invalid URL", async () => {
+    const ctx = createMockContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.playground.webhookDryRun({ url: "not-a-url" })
+    ).rejects.toThrow();
+  });
+
+  it("requires authentication", async () => {
+    const ctx = createMockContext({ user: null });
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.playground.webhookDryRun({ url: "https://example.com/hook" })
+    ).rejects.toThrow(/login|unauthorized/i);
+  });
+
+  it("accepts valid URL and optional payload", async () => {
+    const ctx = createMockContext();
+    const caller = appRouter.createCaller(ctx);
+    // This will fail to connect but should return a structured error response
+    const result = await caller.playground.webhookDryRun({
+      url: "https://httpbin.org/post",
+      payload: JSON.stringify({ test: true }),
+    });
+    // Either success or connection failure — both are valid structured responses
+    expect(typeof result.statusCode).toBe("number");
+    expect(typeof result.responseMs).toBe("number");
+    expect(typeof result.responseBody).toBe("string");
+  });
+});

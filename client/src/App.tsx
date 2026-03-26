@@ -15,6 +15,7 @@ import Playground from "./pages/Playground";
 import Docs from "./pages/Docs";
 import StatusPage from "./pages/Status";
 import Changelog from "./pages/Changelog";
+import Referral from "./pages/Referral";
 
 function Router() {
   return (
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/docs" component={Docs} />
       <Route path="/status" component={StatusPage} />
       <Route path="/changelog" component={Changelog} />
+      <Route path="/dashboard/referral" component={Referral} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -39,7 +41,7 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider defaultTheme="dark" switchable>
         <TooltipProvider>
           <Toaster />
           <Router />

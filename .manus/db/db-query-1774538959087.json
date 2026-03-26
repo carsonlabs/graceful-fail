@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `bonus_credits` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `userId` int NOT NULL,\n  `credits` int NOT NULL,\n  `reason` varchar(64) NOT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `bonus_credits_id` PRIMARY KEY(`id`)\n);\nCREATE TABLE `referrals` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `referrerId` int NOT NULL,\n  `code` varchar(16) NOT NULL,\n  `referredUserId` int,\n  `bonusAwarded` boolean NOT NULL DEFAULT false,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `redeemedAt` timestamp,\n  CONSTRAINT `referrals_id` PRIMARY KEY(`id`),\n  CONSTRAINT `referrals_code_unique` UNIQUE(`code`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2VJemZSZ3ks3bBp.05e6da88e31f --database gWqCGEfQHjyCZk9AmeraCf --execute CREATE TABLE `bonus_credits` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `userId` int NOT NULL,\n  `credits` int NOT NULL,\n  `reason` varchar(64) NOT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `bonus_credits_id` PRIMARY KEY(`id`)\n);\nCREATE TABLE `referrals` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `referrerId` int NOT NULL,\n  `code` varchar(16) NOT NULL,\n  `referredUserId` int,\n  `bonusAwarded` boolean NOT NULL DEFAULT false,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `redeemedAt` timestamp,\n  CONSTRAINT `referrals_id` PRIMARY KEY(`id`),\n  CONSTRAINT `referrals_code_unique` UNIQUE(`code`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 598
+}

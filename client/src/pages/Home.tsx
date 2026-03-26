@@ -4,8 +4,9 @@ import { getLoginUrl } from "@/const";
 import { Link } from "wouter";
 import {
   Zap, Shield, BarChart2, Code2, ArrowRight, CheckCircle2,
-  AlertTriangle, RefreshCw, Lock, Terminal
+  AlertTriangle, RefreshCw, Lock, Terminal, Sun, Moon
 } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const FEATURES = [
   {
@@ -110,6 +111,7 @@ const response = await fetch("https://your-app.com/api/proxy", {
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -131,6 +133,17 @@ export default function Home() {
             <Link href="/changelog" className="hover:text-foreground transition-colors">Changelog</Link>
           </nav>
           <div className="flex items-center gap-3">
+            {toggleTheme && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleTheme}
+                className="w-8 h-8 p-0 text-muted-foreground hover:text-foreground"
+                title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </Button>
+            )}
             {isAuthenticated ? (
               <Link href="/dashboard">
                 <Button size="sm" className="gap-2">

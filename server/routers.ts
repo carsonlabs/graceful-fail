@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { createHash, randomBytes } from "crypto";
 import { billingRouter } from "./stripeRouter";
 import { webhooksRouter } from "./webhookRouter";
+import { referralRouter } from "./referralRouter";
 import { z } from "zod";
 import {
   createApiKey,
@@ -133,6 +134,70 @@ export const appRouter = router({
   dashboard: dashboardRouter,
   billing: billingRouter,
   webhooks: webhooksRouter,
+  referrals: referralRouter,
+  playground: router({
+    webhookDryRun: protectedProcedure
+      .input(
+        z.object({
+          url: z.string().url(),
+          payload: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const startMs = Date.now();
+        const body = input.payload ?? JSON.stringify({
+          event: "non_retriable_error",
+          timestamp: new Date().toISOString(),
+          data: {
+            request_id: "dry_run_" + Math.random().toString(36).slice(2, 10),
+            destination_url: "https://api.example.com/endpoint",
+            method: "POST",
+            status_code: 422,
+            error_category: "validation_error",
+            is_retriable: false,
+            actionable_fix_for_agent: "This is a dry-run test payload from Graceful Fail Playground.",
+          },
+        });
+
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 10000);
+          const res = await fetch(input.url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Graceful-Fail-Dry-Run": "true",
+              "User-Agent": "GracefulFail-Playground/1.0",
+            },
+            body,
+            signal: controller.signal,
+          });
+          clearTimeout(timeout);
+          const responseMs = Date.now() - startMs;
+          let responseBody = "";
+          try { responseBody = await res.text(); } catch { responseBody = "(could not read body)"; }
+          return {
+            success: true,
+            statusCode: res.status,
+            statusText: res.statusText,
+            responseMs,
+            responseBody: responseBody.slice(0, 2000),
+            payloadSent: body,
+          };
+        } catch (err: unknown) {
+          const responseMs = Date.now() - startMs;
+          const message = err instanceof Error ? err.message : "Unknown error";
+          return {
+            success: false,
+            statusCode: 0,
+            statusText: "Connection failed",
+            responseMs,
+            responseBody: message,
+            payloadSent: body,
+          };
+        }
+      }),
+  }),
   status: router({
     get: publicProcedure.query(async () => getPublicStatus()),
   }),

@@ -1,4 +1,4 @@
-import { invokeLLM } from "./_core/llm";
+himport { invokeLLM } from "./_core/llm";
 
 /** Headers that must be stripped before sending to the LLM to prevent credential leakage */
 const SENSITIVE_HEADERS = new Set([
@@ -89,7 +89,7 @@ Analyze this failure and return your diagnosis as JSON.`;
         type: "json_schema",
         json_schema: {
           name: "error_analysis",
-          strict: true,
+          strict: false,
           schema: {
             type: "object",
             properties: {

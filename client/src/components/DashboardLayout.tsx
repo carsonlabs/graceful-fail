@@ -75,7 +75,7 @@ export default function DashboardLayout({
             size="lg"
             className="w-full shadow-lg hover:shadow-xl transition-all"
           >
-            Sign in
+            Sign in with GitHub
           </Button>
         </div>
       </div>

@@ -16,6 +16,7 @@ import {
   ChevronUp,
   Loader2,
   FlaskConical,
+  Share2,
 } from "lucide-react";
 import {
   Select,
@@ -25,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useEffect } from "react";
 
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 
@@ -82,11 +84,22 @@ function DiffViewer({ diff }: { diff: { remove: string[]; add: Record<string, st
   );
 }
 
+function readQueryParams() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    destinationUrl: params.get("url") ?? "https://httpbin.org/status/422",
+    method: params.get("method") ?? "POST",
+    body: params.get("body") ? decodeURIComponent(params.get("body")!) : '{\n  "name": "John Doe"\n}',
+    extraHeaders: params.get("headers") ? decodeURIComponent(params.get("headers")!) : "",
+  };
+}
+
 export default function Playground() {
-  const [destinationUrl, setDestinationUrl] = useState("https://httpbin.org/status/422");
-  const [method, setMethod] = useState<string>("POST");
-  const [body, setBody] = useState('{\n  "name": "John Doe"\n}');
-  const [extraHeaders, setExtraHeaders] = useState("");
+  const initial = readQueryParams();
+  const [destinationUrl, setDestinationUrl] = useState(initial.destinationUrl);
+  const [method, setMethod] = useState<string>(initial.method);
+  const [body, setBody] = useState(initial.body);
+  const [extraHeaders, setExtraHeaders] = useState(initial.extraHeaders);
   const [apiKey, setApiKey] = useState("");
   const [result, setResult] = useState<PlaygroundResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -170,6 +183,22 @@ export default function Playground() {
   const isIntercepted = result?.graceful_fail_intercepted === true;
   const isPassthrough = result && !isIntercepted;
 
+  // Sync URL query params whenever request state changes
+  useEffect(() => {
+    const params = new URLSearchParams();
+    params.set("url", destinationUrl);
+    params.set("method", method);
+    if (body.trim()) params.set("body", encodeURIComponent(body));
+    if (extraHeaders.trim()) params.set("headers", encodeURIComponent(extraHeaders));
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState(null, "", newUrl);
+  }, [destinationUrl, method, body, extraHeaders]);
+
+  const copyShareLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast.success("Share link copied to clipboard!");
+  };
+
   const buildCurlCommand = () => {
     const hasBody = ["POST", "PUT", "PATCH"].includes(method);
     const lines: string[] = [
@@ -203,14 +232,20 @@ export default function Playground() {
   return (
     <AppLayout>
       <div className="p-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <FlaskConical className="w-6 h-6 text-primary" />
-            API Playground
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Test any API through the Graceful Fail proxy and see the LLM error analysis in real time
-          </p>
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <FlaskConical className="w-6 h-6 text-primary" />
+              API Playground
+            </h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Test any API through the Graceful Fail proxy and see the LLM error analysis in real time
+            </p>
+          </div>
+          <Button variant="outline" size="sm" className="gap-1.5 shrink-0" onClick={copyShareLink}>
+            <Share2 className="w-3.5 h-3.5" />
+            Share
+          </Button>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6">

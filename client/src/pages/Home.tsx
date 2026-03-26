@@ -127,6 +127,7 @@ export default function Home() {
             <a href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</a>
             <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
             <Link href="/docs" className="hover:text-foreground transition-colors">Docs</Link>
+            <Link href="/status" className="hover:text-foreground transition-colors">Status</Link>
           </nav>
           <div className="flex items-center gap-3">
             {isAuthenticated ? (

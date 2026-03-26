@@ -94,3 +94,22 @@
 - [x] Add "Copy as cURL" button to Playground request panel
 - [x] Build curl command string from current method, URL, headers, body, and API key
 - [x] Toast confirmation on copy
+
+## OpenAPI Spec
+- [x] Server: GET /api/openapi.json returns OpenAPI 3.1 spec
+- [x] Spec covers POST /api/proxy with all headers, request body, and both response schemas
+- [x] Spec includes security scheme (Bearer token)
+- [x] Docs page: link to download raw JSON and import instructions for Postman/Insomnia
+
+## Shareable Playground Links
+- [x] Encode method, destinationUrl, body, extraHeaders into URL query params on change
+- [x] Decode and pre-fill state from URL query params on mount
+- [x] Add "Share" button that copies the current URL to clipboard
+- [x] Toast confirmation on share copy
+
+## Public Status Page
+- [x] /status route — public, no auth required
+- [x] tRPC publicProcedure: getStatus — returns aggregate latency and request stats from request_logs
+- [x] Show: total requests (24h), avg proxy latency (24h), avg LLM analysis time (24h), error interception rate
+- [x] Show: system status indicator (operational / degraded)
+- [x] Link from landing page nav and docs page

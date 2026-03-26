@@ -248,3 +248,50 @@ export async function getDashboardStats(userId: number) {
     successRate,
   };
 }
+
+// ── Public Status ─────────────────────────────────────────────────────────────
+
+export async function getPublicStatus() {
+  const db = await getDb();
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  if (!db) {
+    return {
+      status: "degraded" as const,
+      totalRequests24h: 0,
+      interceptedRequests24h: 0,
+      avgProxyLatencyMs: null as number | null,
+      avgLlmLatencyMs: null as number | null,
+      interceptionRate: 0,
+    };
+  }
+
+  const rows = await db
+    .select({
+      total: sql<number>`COUNT(*)`,
+      intercepted: sql<number>`SUM(CASE WHEN wasIntercepted = 1 THEN 1 ELSE 0 END)`,
+      avgProxy: sql<number>`AVG(durationMs)`,
+      avgLlm: sql<number>`AVG(CASE WHEN wasIntercepted = 1 AND llmDurationMs IS NOT NULL THEN llmDurationMs ELSE NULL END)`,
+    })
+    .from(requestLogs)
+    .where(sql`createdAt >= ${since24h}`);
+
+  const row = rows[0];
+  const total = Number(row?.total ?? 0);
+  const intercepted = Number(row?.intercepted ?? 0);
+  const avgProxy = row?.avgProxy != null ? Math.round(Number(row.avgProxy)) : null;
+  const avgLlm = row?.avgLlm != null ? Math.round(Number(row.avgLlm)) : null;
+  const interceptionRate = total > 0 ? Math.round((intercepted / total) * 100) : 0;
+
+  // Mark degraded if avg proxy latency > 3 seconds
+  const status = avgProxy != null && avgProxy > 3000 ? "degraded" as const : "operational" as const;
+
+  return {
+    status,
+    totalRequests24h: total,
+    interceptedRequests24h: intercepted,
+    avgProxyLatencyMs: avgProxy,
+    avgLlmLatencyMs: avgLlm,
+    interceptionRate,
+  };
+}

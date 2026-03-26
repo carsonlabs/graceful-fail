@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Copy, Check, Zap, ChevronRight, ExternalLink } from "lucide-react";
+import { Copy, Check, Zap, ChevronRight, ExternalLink, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -205,6 +205,9 @@ export default function Docs() {
             <span className="text-sm text-muted-foreground">API Reference</span>
           </Link>
           <div className="flex items-center gap-3">
+            <Link href="/status" className="text-xs text-muted-foreground hover:text-foreground transition-colors hidden md:block">
+              System Status
+            </Link>
             <Link href="/dashboard/playground">
               <Button variant="outline" size="sm" className="gap-1.5 text-xs">
                 <ExternalLink className="w-3 h-3" />
@@ -231,6 +234,7 @@ export default function Docs() {
               { id: "error-categories", label: "Error Categories" },
               { id: "code-examples", label: "Code Examples" },
               { id: "rate-limits", label: "Rate Limits" },
+              { id: "openapi", label: "OpenAPI Spec" },
             ].map(({ id, label }) => (
               <a
                 key={id}
@@ -509,6 +513,53 @@ export default function Docs() {
             Credits are only consumed when a request is intercepted (4xx/5xx). Successful pass-through requests (2xx/3xx) do not consume credits.
             When the monthly limit is reached, the proxy returns <code className="font-mono bg-muted px-1 rounded">HTTP 429</code> with an <code className="font-mono bg-muted px-1 rounded">upgrade_url</code> field.
           </p>
+
+          {/* OpenAPI Spec */}
+          <SectionHeading id="openapi">OpenAPI Spec</SectionHeading>
+          <p className="text-sm text-muted-foreground mb-4">
+            A machine-readable OpenAPI 3.1 specification is available for import into Postman, Insomnia, or any OpenAPI-compatible tool.
+            The spec is always up-to-date as it is generated dynamically from the live server.
+          </p>
+          <div className="flex flex-wrap gap-3 mb-5">
+            <a href="/api/openapi.json" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" className="gap-2 text-sm">
+                <Download className="w-4 h-4" />
+                Download openapi.json
+              </Button>
+            </a>
+          </div>
+          <div className="space-y-4">
+            {[
+              {
+                tool: "Postman",
+                steps: [
+                  "Open Postman and click Import in the top-left",
+                  'Select "Link" and paste: ' + window.location.origin + "/api/openapi.json",
+                  "Click Continue then Import — all endpoints and schemas are ready",
+                ],
+              },
+              {
+                tool: "Insomnia",
+                steps: [
+                  "Open Insomnia and click Create → Import From URL",
+                  'Paste: ' + window.location.origin + "/api/openapi.json",
+                  "Click Fetch and Import — the proxy endpoint appears in your collection",
+                ],
+              },
+            ].map(({ tool, steps }) => (
+              <div key={tool} className="rounded-lg border border-border bg-card px-4 py-3">
+                <p className="text-sm font-semibold text-foreground mb-2">{tool}</p>
+                <ol className="space-y-1">
+                  {steps.map((step, i) => (
+                    <li key={i} className="text-xs text-muted-foreground flex gap-2">
+                      <span className="text-primary font-mono shrink-0">{i + 1}.</span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ))}
+          </div>
         </main>
       </div>
     </div>

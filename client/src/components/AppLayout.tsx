@@ -12,6 +12,7 @@ import {
   Webhook,
   FlaskConical,
   BookOpen,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
@@ -33,6 +34,7 @@ const NAV_SECTIONS = [
     label: "Resources",
     items: [
       { href: "/docs", label: "API Docs", icon: BookOpen },
+      { href: "/status", label: "System Status", icon: Activity },
     ],
   },
   {

@@ -9,6 +9,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { proxyHandler } from "../proxyEngine";
 import { registerStripeWebhook } from "../stripeRouter";
+import { buildOpenApiSpec } from "../openApiSpec";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -43,6 +44,14 @@ async function startServer() {
 
   // Graceful Fail proxy endpoint — raw Express route (needs raw body access)
   app.post("/api/proxy", proxyHandler);
+
+  // OpenAPI spec — public, no auth required
+  app.get("/api/openapi.json", (req, res) => {
+    const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+    const host = req.headers["x-forwarded-host"] || req.get("host") || "localhost:3000";
+    const baseUrl = `${protocol}://${host}`;
+    res.json(buildOpenApiSpec(baseUrl));
+  });
 
   // tRPC API
   app.use(

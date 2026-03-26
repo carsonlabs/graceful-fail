@@ -12,6 +12,7 @@ import {
   getRequestLogCount,
   getUsageStatsByUserId,
   revokeApiKey,
+  getPublicStatus,
 } from "./db";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -97,6 +98,9 @@ export const appRouter = router({
   dashboard: dashboardRouter,
   billing: billingRouter,
   webhooks: webhooksRouter,
+  status: router({
+    get: publicProcedure.query(async () => getPublicStatus()),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

@@ -59,7 +59,20 @@ export async function proxyHandler(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // ── 3. Validate destination ──────────────────────────────────────────────
+  // ── 3. Extract BYOLLM overrides (optional) ──────────────────────────────
+  const llmOverrides = (() => {
+    const customKey = req.headers["x-llm-api-key"] as string | undefined;
+    const customModel = req.headers["x-llm-model"] as string | undefined;
+    const customBaseUrl = req.headers["x-llm-base-url"] as string | undefined;
+    if (!customKey && !customModel && !customBaseUrl) return undefined;
+    return {
+      ...(customKey && { apiKey: customKey }),
+      ...(customModel && { model: customModel }),
+      ...(customBaseUrl && { baseUrl: customBaseUrl }),
+    };
+  })();
+
+  // ── 4. Validate destination ──────────────────────────────────────────────
   const destinationUrl = req.headers["x-destination-url"] as string | undefined;
   const destinationMethod = (req.headers["x-destination-method"] as string | undefined)?.toUpperCase() ?? "POST";
 
@@ -91,13 +104,16 @@ export async function proxyHandler(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // ── 4. Build forwarded headers ───────────────────────────────────────────
+  // ── 5. Build forwarded headers ───────────────────────────────────────────
   const PROXY_HEADERS_TO_STRIP = new Set([
     "host",
     "x-destination-url",
     "x-destination-method",
-    "authorization", // strip our own auth key
-    "content-length", // will be recalculated
+    "x-llm-api-key",    // BYOLLM — never forward to destination
+    "x-llm-model",      // BYOLLM
+    "x-llm-base-url",   // BYOLLM
+    "authorization",     // strip our own auth key
+    "content-length",    // will be recalculated
     "transfer-encoding",
     "connection",
   ]);
@@ -170,7 +186,7 @@ export async function proxyHandler(req: Request, res: Response): Promise<void> {
       requestBody: req.body,
       statusCode: destStatusCode,
       responseBody: destBody,
-    });
+    }, llmOverrides);
 
     const durationMs = Date.now() - start;
     await touchApiKeyLastUsed(apiKey.id);

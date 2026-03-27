@@ -55,6 +55,27 @@ export function buildOpenApiSpec(baseUrl: string) {
                 default: "POST",
               },
             },
+            {
+              name: "X-LLM-API-Key",
+              in: "header",
+              required: false,
+              description: "Bring your own LLM key. If provided, error analysis uses this key instead of the SelfHeal default. Supports any OpenAI-compatible API.",
+              schema: { type: "string" },
+            },
+            {
+              name: "X-LLM-Model",
+              in: "header",
+              required: false,
+              description: "Override the LLM model used for error analysis (e.g. gpt-4o, claude-3-5-sonnet). Requires X-LLM-API-Key or X-LLM-Base-URL.",
+              schema: { type: "string", example: "gpt-4o" },
+            },
+            {
+              name: "X-LLM-Base-URL",
+              in: "header",
+              required: false,
+              description: "Override the LLM API base URL (e.g. https://api.anthropic.com for Anthropic, or your Azure OpenAI endpoint). Must be OpenAI-compatible.",
+              schema: { type: "string", format: "uri" },
+            },
           ],
           requestBody: {
             required: false,

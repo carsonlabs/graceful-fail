@@ -1,4 +1,4 @@
-import { invokeLLM } from "./_core/llm";
+import { invokeLLM, type LLMOverrides } from "./_core/llm";
 
 /** Headers that must be stripped before sending to the LLM to prevent credential leakage */
 const SENSITIVE_HEADERS = new Set([
@@ -154,7 +154,7 @@ Rules:
 - Classify the error_category accurately.
 - NEVER reference or repeat any Authorization, API key, or credential values from the request.`;
 
-export async function analyzeError(input: AnalysisInput): Promise<ErrorAnalysis> {
+export async function analyzeError(input: AnalysisInput, llmOverrides?: LLMOverrides): Promise<ErrorAnalysis> {
   const safeHeaders = sanitizeHeaders(input.requestHeaders);
   const provider = detectProvider(input.destinationUrl);
   const providerContext = getProviderContext(provider, input.statusCode);
@@ -224,7 +224,7 @@ Analyze this failure and return your diagnosis as JSON.`;
           },
         },
       },
-    });
+    }, llmOverrides);
 
     const rawContent = response?.choices?.[0]?.message?.content;
     const content = typeof rawContent === "string" ? rawContent : null;

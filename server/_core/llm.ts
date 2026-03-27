@@ -265,8 +265,14 @@ const normalizeResponseFormat = ({
   };
 };
 
-export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
-  const apiKey = getApiKey();
+export interface LLMOverrides {
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+}
+
+export async function invokeLLM(params: InvokeParams, overrides?: LLMOverrides): Promise<InvokeResult> {
+  const apiKey = overrides?.apiKey || getApiKey();
 
   const {
     messages,
@@ -280,7 +286,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: process.env.LLM_MODEL || "gpt-4o-mini",
+    model: overrides?.model || process.env.LLM_MODEL || "gpt-4o-mini",
     messages: messages.map(normalizeMessage),
   };
 
@@ -309,7 +315,11 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.response_format = normalizedResponseFormat;
   }
 
-  const response = await fetch(resolveApiUrl(), {
+  const apiUrl = overrides?.baseUrl
+    ? `${overrides.baseUrl.replace(/\/$/, "")}/v1/chat/completions`
+    : resolveApiUrl();
+
+  const response = await fetch(apiUrl, {
     method: "POST",
     headers: {
       "content-type": "application/json",

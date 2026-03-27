@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "graceful-fail"
-version = "0.1.0"
+version = "0.2.0"
 description = "Self-healing API proxy for AI agents. Route your HTTP calls through Graceful Fail and get structured, LLM-powered fix instructions when APIs return errors."
 readme = "README.md"
 license = "MIT"

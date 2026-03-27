@@ -1,6 +1,6 @@
 {
   "name": "graceful-fail",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Self-healing API proxy for AI agents. Route HTTP calls through Graceful Fail and get structured, LLM-powered fix instructions when APIs return errors.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

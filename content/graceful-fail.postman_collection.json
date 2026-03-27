@@ -1,0 +1,367 @@
+{
+	"info": {
+		"_postman_id": "graceful-fail-api-collection",
+		"name": "Graceful Fail API (selfheal.dev)",
+		"description": "Postman collection for the Graceful Fail API — an intelligent proxy that intercepts API errors and returns actionable fix suggestions for AI agents.\n\nBase URL: https://selfheal.dev\n\nAll proxy requests go through POST /api/proxy with the destination URL and method specified via headers.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://selfheal.dev",
+			"type": "string"
+		},
+		{
+			"key": "api_key",
+			"value": "gf_your_api_key",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Quick Start",
+			"description": "Basic examples showing how to proxy requests through Graceful Fail.",
+			"item": [
+				{
+					"name": "Hello World — Proxy a GET request",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Destination-URL",
+								"value": "https://httpbin.org/get",
+								"type": "text"
+							},
+							{
+								"key": "X-Destination-Method",
+								"value": "GET",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/proxy",
+							"host": ["{{base_url}}"],
+							"path": ["api", "proxy"]
+						},
+						"description": "The simplest possible Graceful Fail request. Proxies a GET request to httpbin.org/get and returns the response verbatim. Since httpbin returns 200, no error interception occurs."
+					},
+					"response": []
+				},
+				{
+					"name": "Proxy a POST request",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Destination-URL",
+								"value": "https://httpbin.org/post",
+								"type": "text"
+							},
+							{
+								"key": "X-Destination-Method",
+								"value": "POST",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"name\": \"Jane Doe\",\n\t\"email\": \"jane@example.com\",\n\t\"plan\": \"pro\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/proxy",
+							"host": ["{{base_url}}"],
+							"path": ["api", "proxy"]
+						},
+						"description": "Proxies a POST request with a JSON body to httpbin.org/post. The destination echoes back the payload, demonstrating how Graceful Fail forwards request bodies."
+					},
+					"response": []
+				},
+				{
+					"name": "Proxy with custom headers",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Destination-URL",
+								"value": "https://httpbin.org/post",
+								"type": "text"
+							},
+							{
+								"key": "X-Destination-Method",
+								"value": "POST",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "X-Custom-Header",
+								"value": "my-custom-value",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"message\": \"This request includes a custom header\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/proxy",
+							"host": ["{{base_url}}"],
+							"path": ["api", "proxy"]
+						},
+						"description": "Demonstrates passing additional custom headers through the proxy. The X-Custom-Header is forwarded to the destination API alongside the standard Graceful Fail headers."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Error Scenarios",
+			"description": "Requests designed to trigger different HTTP error codes from the destination, demonstrating Graceful Fail's error interception and analysis.",
+			"item": [
+				{
+					"name": "Trigger a 404 — Not Found",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Destination-URL",
+								"value": "https://httpbin.org/status/404",
+								"type": "text"
+							},
+							{
+								"key": "X-Destination-Method",
+								"value": "GET",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/proxy",
+							"host": ["{{base_url}}"],
+							"path": ["api", "proxy"]
+						},
+						"description": "Triggers a 404 Not Found from the destination. Graceful Fail intercepts the error and returns an analysis with human_readable_explanation and actionable_fix_for_agent fields explaining the missing resource."
+					},
+					"response": []
+				},
+				{
+					"name": "Trigger a 422 — Validation Error",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Destination-URL",
+								"value": "https://httpbin.org/status/422",
+								"type": "text"
+							},
+							{
+								"key": "X-Destination-Method",
+								"value": "POST",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"username\": \"test_user\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/proxy",
+							"host": ["{{base_url}}"],
+							"path": ["api", "proxy"]
+						},
+						"description": "Triggers a 422 Unprocessable Entity from the destination with an intentionally incomplete payload. Graceful Fail intercepts the validation error and returns a suggested_payload_diff showing which fields to add, remove, or modify."
+					},
+					"response": []
+				},
+				{
+					"name": "Trigger a 500 — Server Error",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Destination-URL",
+								"value": "https://httpbin.org/status/500",
+								"type": "text"
+							},
+							{
+								"key": "X-Destination-Method",
+								"value": "GET",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/proxy",
+							"host": ["{{base_url}}"],
+							"path": ["api", "proxy"]
+						},
+						"description": "Triggers a 500 Internal Server Error from the destination. Graceful Fail intercepts the error and provides analysis including is_retriable (likely true for 500s) and error_category to help agents decide whether to retry."
+					},
+					"response": []
+				},
+				{
+					"name": "Trigger a 429 — Rate Limit",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Destination-URL",
+								"value": "https://httpbin.org/status/429",
+								"type": "text"
+							},
+							{
+								"key": "X-Destination-Method",
+								"value": "GET",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/proxy",
+							"host": ["{{base_url}}"],
+							"path": ["api", "proxy"]
+						},
+						"description": "Triggers a 429 Too Many Requests from the destination. Graceful Fail intercepts the rate limit error and provides guidance on retry timing and backoff strategy in the actionable_fix_for_agent field."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Utilities",
+			"description": "Helper requests for inspecting the Graceful Fail API itself.",
+			"item": [
+				{
+					"name": "Fetch OpenAPI Spec",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/openapi.json",
+							"host": ["{{base_url}}"],
+							"path": ["api", "openapi.json"]
+						},
+						"description": "Fetches the OpenAPI 3.1 specification for the Graceful Fail API. No authentication required. Useful for code generation, documentation, or importing into other API tools."
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

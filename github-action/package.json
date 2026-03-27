@@ -1,0 +1,27 @@
+{
+  "name": "@selfheal/proxy-action",
+  "version": "1.0.0",
+  "description": "GitHub Action: Route API calls through Graceful Fail for self-healing error handling",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "ncc build src/index.ts --out dist --minify",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "github-action",
+    "graceful-fail",
+    "selfheal",
+    "error-handling",
+    "self-healing",
+    "api-proxy"
+  ],
+  "author": "selfheal",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^1.11.1"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.38.3",
+    "typescript": "^5.7.3"
+  }
+}

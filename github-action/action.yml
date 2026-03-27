@@ -1,0 +1,46 @@
+name: "Graceful Fail — Self-Healing API Proxy"
+description: "Route API calls through Graceful Fail and get LLM-powered fix instructions on errors"
+author: "selfheal"
+branding:
+  icon: "shield"
+  color: "green"
+
+inputs:
+  api-key:
+    description: "Your Graceful Fail API key"
+    required: true
+  url:
+    description: "The destination URL to proxy the request to"
+    required: true
+  method:
+    description: "HTTP method for the destination request"
+    required: false
+    default: "POST"
+  body:
+    description: "Request body to send to the destination URL (JSON string)"
+    required: false
+  headers:
+    description: "Additional headers to forward as JSON object string"
+    required: false
+  fail-on-error:
+    description: "If true, fails the step on non-retriable errors"
+    required: false
+    default: "false"
+
+outputs:
+  status-code:
+    description: "HTTP status code from the destination"
+  intercepted:
+    description: "Whether Graceful Fail intercepted an error (true/false)"
+  response:
+    description: "Response body from the destination"
+  error-analysis:
+    description: "LLM-powered analysis of the error (only set on intercepted errors)"
+  is-retriable:
+    description: "Whether the error is retriable (true/false, only set on intercepted errors)"
+  fix-suggestion:
+    description: "Suggested fix for the error (only set on intercepted errors)"
+
+runs:
+  using: "node20"
+  main: "dist/index.js"

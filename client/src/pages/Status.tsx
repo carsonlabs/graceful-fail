@@ -1,6 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
-import { Zap, CheckCircle2, AlertTriangle, Clock, Activity, BarChart2, ArrowUpRight } from "lucide-react";
+import { Zap, CheckCircle2, AlertTriangle, Clock, Activity, BarChart2, ArrowUpRight, TrendingDown, Shield } from "lucide-react";
 
 function MetricCard({
   label,
@@ -59,6 +59,84 @@ const COMPONENTS = [
   { name: "Developer Dashboard", description: "Web UI, API key management, and request logs" },
   { name: "Webhook Delivery", description: "Event dispatch and retry engine" },
 ];
+
+const CATEGORY_COLORS: Record<string, string> = {
+  auth: "text-red-400",
+  rate_limit: "text-orange-400",
+  validation: "text-yellow-400",
+  not_found: "text-purple-400",
+  server_error: "text-red-400",
+  unknown: "text-muted-foreground",
+};
+
+function LeaderboardSection() {
+  const { data, isLoading } = trpc.status.leaderboard.useQuery(undefined, {
+    refetchInterval: 60_000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl border border-border overflow-hidden">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0">
+            <div className="w-5 h-4 bg-muted rounded animate-pulse" />
+            <div className="flex-1 h-4 bg-muted rounded animate-pulse" />
+            <div className="w-16 h-4 bg-muted rounded animate-pulse" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="rounded-xl border border-border px-5 py-10 text-center">
+        <Shield className="w-8 h-8 text-emerald-400 mx-auto mb-3" />
+        <p className="text-sm font-medium text-foreground">No failures recorded in the last 24 hours</p>
+        <p className="text-xs text-muted-foreground mt-1">All proxied APIs are responding normally</p>
+      </div>
+    );
+  }
+
+  const maxCount = data[0]?.failureCount ?? 1;
+
+  return (
+    <div className="rounded-xl border border-border overflow-hidden">
+      {data.map((row, i) => (
+        <div key={row.domain} className={`px-5 py-4 ${i < data.length - 1 ? "border-b border-border" : ""}`}>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-mono text-muted-foreground w-5 text-right shrink-0">{i + 1}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="text-sm font-medium text-foreground truncate font-mono">{row.domain}</span>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className={`text-xs font-medium ${CATEGORY_COLORS[row.topCategory] ?? "text-muted-foreground"}`}>
+                    {row.topCategory}
+                  </span>
+                  <span className="text-sm font-bold tabular-nums text-foreground">
+                    {row.failureCount.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+              {/* Bar */}
+              <div className="h-1 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-primary/60 transition-all"
+                  style={{ width: `${Math.max(4, (row.failureCount / maxCount) * 100)}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+      <div className="px-5 py-2.5 bg-muted/30 border-t border-border">
+        <p className="text-xs text-muted-foreground">
+          Showing top {data.length} domains by failure count · Paths and query params removed for privacy
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function StatusPage() {
   const { data, isLoading } = trpc.status.get.useQuery(undefined, {
@@ -190,6 +268,18 @@ export default function StatusPage() {
             <span className="text-emerald-400/60">Operational</span>
             <span className="text-amber-400/60">Degraded</span>
           </div>
+        </section>
+
+        {/* API Leaderboard */}
+        <section className="mb-12">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-2">
+            <TrendingDown className="w-4 h-4" />
+            Most Failed APIs (Last 24h)
+          </h2>
+          <p className="text-xs text-muted-foreground mb-4">
+            Aggregated across all proxy requests — domains only, no paths or user data
+          </p>
+          <LeaderboardSection />
         </section>
 
         {/* Footer CTA */}

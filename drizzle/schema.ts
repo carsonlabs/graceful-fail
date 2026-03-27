@@ -21,6 +21,10 @@ export const users = mysqlTable("users", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
   onboardingDismissed: boolean("onboardingDismissed").default(false).notNull(),
+  /** Whether the user has opted in to weekly digest emails */
+  weeklyDigestEnabled: boolean("weeklyDigestEnabled").default(true).notNull(),
+  /** Timestamp of last digest sent (for scheduling) */
+  lastDigestSentAt: timestamp("lastDigestSentAt"),
 });
 
 export type User = typeof users.$inferSelect;
@@ -36,6 +40,9 @@ export const TIER_LIMITS: Record<Tier, number> = {
   pro: 10000,
   agency: 50000,
 };
+
+export const API_PROVIDERS = ["openai", "anthropic", "google", "cohere", "mistral", "huggingface", "azure_openai", "other"] as const;
+export type ApiProvider = (typeof API_PROVIDERS)[number];
 
 export const apiKeys = mysqlTable("api_keys", {
   id: int("id").autoincrement().primaryKey(),
@@ -72,6 +79,10 @@ export const requestLogs = mysqlTable("request_logs", {
   errorSummary: text("errorSummary"),
   /** Whether the error was deemed retriable by the LLM */
   isRetriable: boolean("isRetriable"),
+  /** Detected AI provider (openai, anthropic, etc.) — null for non-AI APIs */
+  provider: varchar("provider", { length: 32 }),
+  /** Error category from LLM analysis */
+  errorCategory: varchar("errorCategory", { length: 32 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -178,3 +189,21 @@ export const bonusCredits = mysqlTable("bonus_credits", {
 
 export type BonusCredit = typeof bonusCredits.$inferSelect;
 export type InsertBonusCredit = typeof bonusCredits.$inferInsert;
+
+// --- Slack Integration ---
+
+export const slackIntegrations = mysqlTable("slack_integrations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  /** Slack Incoming Webhook URL */
+  webhookUrl: text("webhookUrl").notNull(),
+  /** Optional channel override (e.g. #alerts) */
+  channel: varchar("channel", { length: 128 }),
+  /** Whether to send alerts for non-retriable errors */
+  enabled: boolean("enabled").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SlackIntegration = typeof slackIntegrations.$inferSelect;
+export type InsertSlackIntegration = typeof slackIntegrations.$inferInsert;

@@ -17,6 +17,8 @@ import {
   Share2,
   Sun,
   Moon,
+  Slack,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
@@ -54,6 +56,8 @@ const NAV_SECTIONS = [
     label: "Settings",
     items: [
       { href: "/dashboard/webhooks", label: "Webhooks", icon: Webhook },
+      { href: "/dashboard/integrations/slack", label: "Slack Alerts", icon: Slack },
+      { href: "/dashboard/digest", label: "Weekly Digest", icon: Mail },
     ],
   },
 ];

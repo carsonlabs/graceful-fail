@@ -1,8 +1,10 @@
 import type { Request, Response } from "express";
 import { createHash } from "crypto";
 import { getApiKeyByHash, insertRequestLog, touchApiKeyLastUsed, upsertUsageStat, checkRateLimit } from "./db";
-import { analyzeError } from "./llmAnalysis";
+import { analyzeError, detectProvider } from "./llmAnalysis";
 import { dispatchWebhook } from "./webhookEngine";
+import { sendSlackAlert } from "./slackAlert";
+import { getSlackIntegration } from "./db";
 
 /** Build a SHA-256 hash of the raw API key for DB lookup */
 export function hashApiKey(rawKey: string): string {
@@ -184,10 +186,29 @@ export async function proxyHandler(req: Request, res: Response): Promise<void> {
       durationMs,
       errorSummary: analysis.human_readable_explanation.slice(0, 500),
       isRetriable: analysis.is_retriable,
+      provider: analysis.provider,
+      errorCategory: analysis.error_category,
     });
 
-    // Fire non-retriable webhook asynchronously
+    // Fire non-retriable webhook and Slack alert asynchronously
     if (!analysis.is_retriable) {
+      // Slack alert
+      getSlackIntegration(apiKey.userId).then((slackConfig) => {
+        if (slackConfig?.enabled && slackConfig.webhookUrl) {
+          sendSlackAlert(slackConfig.webhookUrl, {
+            destinationUrl,
+            method: destinationMethod,
+            statusCode: destStatusCode,
+            errorCategory: analysis.error_category,
+            explanation: analysis.human_readable_explanation,
+            actionableFix: analysis.actionable_fix_for_agent,
+            provider: analysis.provider,
+            apiKeyName: apiKey.name,
+            channel: slackConfig.channel,
+          }).catch(() => {});
+        }
+      }).catch(() => {});
+
       dispatchWebhook(apiKey.userId, "non_retriable_error", {
         api_key_id: apiKey.id,
         api_key_name: apiKey.name,
@@ -204,6 +225,7 @@ export async function proxyHandler(req: Request, res: Response): Promise<void> {
       graceful_fail_intercepted: true,
       original_status_code: destStatusCode,
       destination_url: destinationUrl,
+      detected_provider: analysis.provider ?? "other",
       error_analysis: analysis,
       raw_destination_response: destBody,
       meta: {

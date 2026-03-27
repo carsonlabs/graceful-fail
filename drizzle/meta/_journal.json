@@ -36,6 +36,13 @@
       "when": 1774538946752,
       "tag": "0004_third_serpent_society",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1774616294677,
+      "tag": "0005_dazzling_doctor_spectrum",
+      "breakpoints": true
     }
   ]
 }

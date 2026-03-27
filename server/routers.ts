@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "crypto";
 import { billingRouter } from "./stripeRouter";
 import { webhooksRouter } from "./webhookRouter";
 import { referralRouter } from "./referralRouter";
+import { slackRouter } from "./slackRouter";
 import { z } from "zod";
 import {
   createApiKey,
@@ -17,6 +18,9 @@ import {
   getOnboardingStatus,
   dismissOnboarding,
   getAllRequestLogsForUser,
+  getApiLeaderboard,
+  getWeeklyDigestData,
+  setWeeklyDigestEnabled,
 } from "./db";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -135,6 +139,7 @@ export const appRouter = router({
   billing: billingRouter,
   webhooks: webhooksRouter,
   referrals: referralRouter,
+  slack: slackRouter,
   playground: router({
     webhookDryRun: protectedProcedure
       .input(
@@ -200,6 +205,39 @@ export const appRouter = router({
   }),
   status: router({
     get: publicProcedure.query(async () => getPublicStatus()),
+    leaderboard: publicProcedure.query(async () => getApiLeaderboard()),
+  }),
+  digest: router({
+    getPreference: protectedProcedure.query(async ({ ctx }) => {
+      const data = await getWeeklyDigestData(ctx.user.id);
+      return { enabled: data !== null };
+    }),
+    setEnabled: protectedProcedure
+      .input(z.object({ enabled: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        await setWeeklyDigestEnabled(ctx.user.id, input.enabled);
+        return { success: true };
+      }),
+    sendNow: protectedProcedure.mutation(async ({ ctx }) => {
+      const data = await getWeeklyDigestData(ctx.user.id);
+      if (!data) return { sent: false, reason: "Digest is disabled or no data available" };
+      // Use notifyOwner as the email channel (owner-only for now, full email in production)
+      const { notifyOwner } = await import("./_core/notification");
+      const topApisText = data.topFailingApis.length > 0
+        ? data.topFailingApis.map((a, i) => `${i + 1}. ${a.domain} (${a.count} failures)`).join("\n")
+        : "No failed requests this week — great job!";
+      await notifyOwner({
+        title: `📊 Your Graceful Fail Weekly Digest`,
+        content: `Hi ${data.userName},\n\nHere's your weekly summary:\n\n` +
+          `• Total requests: ${data.totalRequests}\n` +
+          `• Errors intercepted: ${data.interceptedRequests}\n` +
+          `• Success rate: ${data.successRate}%\n` +
+          `• Credits used: ${data.creditsUsed}\n\n` +
+          `Top failing APIs this week:\n${topApisText}\n\n` +
+          `View full logs: https://aiproxy-gwqcgefq.manus.space/dashboard/logs`,
+      });
+      return { sent: true };
+    }),
   }),
 });
 

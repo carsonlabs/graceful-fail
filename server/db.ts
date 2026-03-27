@@ -10,6 +10,8 @@ import {
   usageStats,
   users,
   webhookEndpoints,
+  slackIntegrations,
+  InsertSlackIntegration,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -336,4 +338,186 @@ export async function getAllRequestLogsForUser(userId: number, interceptedOnly: 
     .where(conditions)
     .orderBy(desc(requestLogs.createdAt))
     .limit(10000);
+}
+
+// ── Slack Integration ─────────────────────────────────────────────────────────
+
+export async function getSlackIntegration(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select()
+    .from(slackIntegrations)
+    .where(eq(slackIntegrations.userId, userId))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function upsertSlackIntegration(
+  userId: number,
+  data: { webhookUrl: string; channel?: string | null; enabled: boolean }
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db
+    .insert(slackIntegrations)
+    .values({ userId, webhookUrl: data.webhookUrl, channel: data.channel ?? null, enabled: data.enabled })
+    .onDuplicateKeyUpdate({
+      set: { webhookUrl: data.webhookUrl, channel: data.channel ?? null, enabled: data.enabled },
+    });
+}
+
+export async function deleteSlackIntegration(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(slackIntegrations).where(eq(slackIntegrations.userId, userId));
+}
+
+// ── Public API Leaderboard ────────────────────────────────────────────────────
+
+export async function getApiLeaderboard() {
+  const db = await getDb();
+  if (!db) return [];
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  // Aggregate failed requests by destination domain (anonymized — no paths/params)
+  const rows = await db
+    .select({
+      destinationUrl: requestLogs.destinationUrl,
+      errorCategory: requestLogs.errorCategory,
+      count: sql<number>`COUNT(*)`,
+    })
+    .from(requestLogs)
+    .where(
+      sql`wasIntercepted = 1 AND createdAt >= ${since24h}`
+    )
+    .groupBy(requestLogs.destinationUrl, requestLogs.errorCategory)
+    .orderBy(sql`COUNT(*) DESC`)
+    .limit(200); // Fetch more, then aggregate by domain in JS
+
+  // Extract hostname and aggregate
+  const domainMap = new Map<string, { failureCount: number; topCategory: string; categoryCount: Map<string, number> }>();
+  for (const row of rows) {
+    let hostname = "unknown";
+    try {
+      hostname = new URL(row.destinationUrl).hostname.replace(/^www\./, "");
+    } catch { /* skip malformed */ }
+
+    const existing = domainMap.get(hostname);
+    const cat = row.errorCategory ?? "unknown";
+    const cnt = Number(row.count);
+
+    if (existing) {
+      existing.failureCount += cnt;
+      existing.categoryCount.set(cat, (existing.categoryCount.get(cat) ?? 0) + cnt);
+    } else {
+      const categoryCount = new Map<string, number>();
+      categoryCount.set(cat, cnt);
+      domainMap.set(hostname, { failureCount: cnt, topCategory: cat, categoryCount });
+    }
+  }
+
+  // Resolve top category per domain and sort
+  const result = Array.from(domainMap.entries())
+    .map(([domain, data]) => {
+      let topCategory = "unknown";
+      let topCount = 0;
+      for (const [cat, cnt] of Array.from(data.categoryCount.entries())) {
+        if (cnt > topCount) { topCount = cnt; topCategory = cat; }
+      }
+      return { domain, failureCount: data.failureCount, topCategory };
+    })
+    .sort((a, b) => b.failureCount - a.failureCount)
+    .slice(0, 10);
+
+  return result;
+}
+
+// ── Weekly Digest ─────────────────────────────────────────────────────────────
+
+export async function getWeeklyDigestData(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [statsRows, topApiRows, userRows] = await Promise.all([
+    db
+      .select({
+        total: sql<number>`COUNT(*)`,
+        intercepted: sql<number>`SUM(CASE WHEN wasIntercepted = 1 THEN 1 ELSE 0 END)`,
+        credits: sql<number>`SUM(creditsUsed)`,
+      })
+      .from(requestLogs)
+      .where(sql`userId = ${userId} AND createdAt >= ${since7d}`),
+    db
+      .select({
+        destinationUrl: requestLogs.destinationUrl,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(requestLogs)
+      .where(sql`userId = ${userId} AND wasIntercepted = 1 AND createdAt >= ${since7d}`)
+      .groupBy(requestLogs.destinationUrl)
+      .orderBy(sql`COUNT(*) DESC`)
+      .limit(10),
+    db.select({ name: users.name, email: users.email, weeklyDigestEnabled: users.weeklyDigestEnabled })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1),
+  ]);
+
+  const user = userRows[0];
+  if (!user?.weeklyDigestEnabled) return null;
+
+  const stats = statsRows[0];
+  const total = Number(stats?.total ?? 0);
+  const intercepted = Number(stats?.intercepted ?? 0);
+  const credits = Number(stats?.credits ?? 0);
+
+  // Aggregate top failing APIs by domain
+  const domainMap = new Map<string, number>();
+  for (const row of topApiRows) {
+    let hostname = "unknown";
+    try { hostname = new URL(row.destinationUrl).hostname.replace(/^www\./, ""); } catch { /* skip */ }
+    domainMap.set(hostname, (domainMap.get(hostname) ?? 0) + Number(row.count));
+  }
+  const topApis = Array.from(domainMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([domain, count]) => ({ domain, count }));
+
+  return {
+    userName: user.name ?? "Developer",
+    userEmail: user.email,
+    totalRequests: total,
+    interceptedRequests: intercepted,
+    creditsUsed: credits,
+    successRate: total > 0 ? Math.round(((total - intercepted) / total) * 100) : 100,
+    topFailingApis: topApis,
+  };
+}
+
+export async function getUsersForDigest() {
+  const db = await getDb();
+  if (!db) return [];
+  // Get users who have digest enabled and either never received one or last received >6 days ago
+  const sixDaysAgo = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000);
+  const result = await db
+    .select({ id: users.id, name: users.name, email: users.email, lastDigestSentAt: users.lastDigestSentAt })
+    .from(users)
+    .where(
+      sql`weeklyDigestEnabled = 1 AND (lastDigestSentAt IS NULL OR lastDigestSentAt < ${sixDaysAgo})`
+    );
+  return result;
+}
+
+export async function markDigestSent(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ lastDigestSentAt: new Date() }).where(eq(users.id, userId));
+}
+
+export async function setWeeklyDigestEnabled(userId: number, enabled: boolean) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ weeklyDigestEnabled: enabled }).where(eq(users.id, userId));
 }

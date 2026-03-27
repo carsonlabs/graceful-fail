@@ -25,6 +25,99 @@ export function sanitizeHeaders(headers: Record<string, string | string[] | unde
   return safe;
 }
 
+// ── Provider Detection ────────────────────────────────────────────────────────
+
+export type ApiProvider = "openai" | "anthropic" | "google" | "cohere" | "mistral" | "huggingface" | "azure_openai" | "other";
+
+const PROVIDER_PATTERNS: Array<{ pattern: RegExp; provider: ApiProvider }> = [
+  { pattern: /api\.openai\.com/i, provider: "openai" },
+  { pattern: /api\.anthropic\.com/i, provider: "anthropic" },
+  { pattern: /generativelanguage\.googleapis\.com/i, provider: "google" },
+  { pattern: /api\.cohere\.(ai|com)/i, provider: "cohere" },
+  { pattern: /api\.mistral\.ai/i, provider: "mistral" },
+  { pattern: /api-inference\.huggingface\.co/i, provider: "huggingface" },
+  { pattern: /\.openai\.azure\.com/i, provider: "azure_openai" },
+];
+
+export function detectProvider(url: string): ApiProvider {
+  for (const { pattern, provider } of PROVIDER_PATTERNS) {
+    if (pattern.test(url)) return provider;
+  }
+  return "other";
+}
+
+// ── Provider-Specific Context Injections ─────────────────────────────────────
+
+function getProviderContext(provider: ApiProvider, statusCode: number): string {
+  switch (provider) {
+    case "openai":
+      return `
+## OpenAI-Specific Context
+You are analyzing a failed OpenAI API request. Key OpenAI error patterns:
+- **429 (rate_limit)**: Could be RPM (requests per minute), TPM (tokens per minute), or RPD (requests per day) limit. Check the 'error.message' for which limit was hit. Fix: implement exponential backoff, reduce request frequency, or upgrade tier.
+- **401 (auth)**: Invalid API key, expired key, or wrong organization. The key must start with 'sk-'. Fix: regenerate the API key in the OpenAI dashboard.
+- **400 with 'context_length_exceeded'**: The prompt + max_tokens exceeds the model's context window. Fix: reduce prompt length, use a model with larger context (gpt-4-turbo has 128k), or chunk the input.
+- **400 with 'invalid_model'**: Model name is wrong or not available in the account. Fix: use exact model IDs like 'gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'.
+- **400 with 'content_policy_violation'**: Request was blocked by content moderation. Fix: review and modify the prompt content.
+- **500/503 (server_error)**: OpenAI service overload. Fix: retry with exponential backoff starting at 1 second.
+- **model field**: Must be a string like "gpt-4o-mini", not an object.
+- **messages array**: Each message needs 'role' (system/user/assistant) and 'content' (string or array of content parts).`;
+
+    case "anthropic":
+      return `
+## Anthropic Claude-Specific Context
+You are analyzing a failed Anthropic API request. Key Anthropic error patterns:
+- **529 (overloaded)**: Anthropic servers are at capacity. Fix: retry with exponential backoff, starting at 30 seconds.
+- **401 (auth)**: Invalid x-api-key header. The key must start with 'sk-ant-'. Fix: regenerate in Anthropic console.
+- **400 with 'prompt_too_long'**: Input exceeds model context limit. Claude 3 Opus/Sonnet/Haiku support 200k tokens. Fix: reduce prompt length or split into chunks.
+- **400 with 'invalid_request_error'**: Malformed request. Common issues: missing 'model' field, wrong message format, missing 'max_tokens'.
+- **429 (rate_limit)**: Token or request rate limit exceeded. Fix: implement backoff, reduce concurrency.
+- **model field**: Must be exact strings like "claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307".
+- **messages format**: Anthropic uses 'role' (user/assistant) and 'content'. System prompt goes in a top-level 'system' field, NOT in messages.
+- **max_tokens**: Required field — Anthropic does not have a default. Must be explicitly set.
+- **anthropic-version header**: Required — use "2023-06-01".`;
+
+    case "google":
+      return `
+## Google Gemini-Specific Context
+You are analyzing a failed Google Generative Language API request. Key patterns:
+- **400 (INVALID_ARGUMENT)**: Malformed request, invalid model name, or unsupported parameter. Fix: check model name format (e.g., 'gemini-1.5-pro').
+- **403 (PERMISSION_DENIED)**: API key doesn't have access to the requested model or the Generative Language API is not enabled. Fix: enable the API in Google Cloud Console.
+- **429 (RESOURCE_EXHAUSTED)**: Quota exceeded. Fix: implement backoff or upgrade quota in Google Cloud Console.
+- **model format**: Use 'models/gemini-1.5-pro' or 'gemini-1.5-pro' depending on the endpoint.`;
+
+    case "cohere":
+      return `
+## Cohere-Specific Context
+You are analyzing a failed Cohere API request. Key patterns:
+- **401**: Invalid or missing API key in Authorization header. Key format: 'Bearer <key>'.
+- **429**: Rate limit exceeded. Free tier has strict limits. Fix: upgrade plan or implement backoff.
+- **400**: Malformed request. Check 'model' field (e.g., 'command-r-plus'), 'message' field for chat endpoint.`;
+
+    case "mistral":
+      return `
+## Mistral AI-Specific Context
+You are analyzing a failed Mistral API request. Key patterns:
+- **401**: Invalid API key. Fix: check key in Mistral console.
+- **422**: Validation error. Common: wrong model name (use 'mistral-large-latest', 'mistral-small-latest'), missing required fields.
+- **429**: Rate limit. Fix: exponential backoff.`;
+
+    case "azure_openai":
+      return `
+## Azure OpenAI-Specific Context
+You are analyzing a failed Azure OpenAI API request. Key patterns:
+- **401**: Invalid api-key header or wrong endpoint. Azure uses 'api-key' header, not 'Authorization: Bearer'.
+- **404**: Deployment name not found. The URL path includes the deployment name — verify it matches exactly in Azure portal.
+- **429**: Token rate limit or quota exceeded per deployment. Fix: reduce request rate or increase quota in Azure portal.
+- **400**: API version mismatch. Ensure 'api-version' query param matches a supported version (e.g., '2024-02-01').`;
+
+    default:
+      return "";
+  }
+}
+
+// ── Analysis Types ────────────────────────────────────────────────────────────
+
 export interface AnalysisInput {
   destinationUrl: string;
   method: string;
@@ -44,9 +137,11 @@ export interface ErrorAnalysis {
     modify: Record<string, string>;
   };
   error_category: "validation" | "auth" | "rate_limit" | "not_found" | "server_error" | "unknown";
+  /** Detected API provider — added by analyzeError, not the LLM */
+  provider?: ApiProvider;
 }
 
-const SYSTEM_PROMPT = `You are an expert API debugging assistant for autonomous AI agents. 
+const BASE_SYSTEM_PROMPT = `You are an expert API debugging assistant for autonomous AI agents. 
 Your job is to analyze a failed HTTP request and provide exact, actionable instructions so the agent can fix its payload and retry successfully.
 
 Rules:
@@ -61,12 +156,19 @@ Rules:
 
 export async function analyzeError(input: AnalysisInput): Promise<ErrorAnalysis> {
   const safeHeaders = sanitizeHeaders(input.requestHeaders);
+  const provider = detectProvider(input.destinationUrl);
+  const providerContext = getProviderContext(provider, input.statusCode);
+
+  const systemPrompt = providerContext
+    ? `${BASE_SYSTEM_PROMPT}\n${providerContext}`
+    : BASE_SYSTEM_PROMPT;
 
   const userMessage = `
 ## Failed API Request
 
 **Destination:** ${input.method} ${input.destinationUrl}
 **HTTP Status:** ${input.statusCode}
+**Detected Provider:** ${provider}
 
 **Request Headers (sanitized):**
 ${JSON.stringify(safeHeaders, null, 2)}
@@ -82,7 +184,7 @@ Analyze this failure and return your diagnosis as JSON.`;
   try {
     const response = await invokeLLM({
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: systemPrompt },
         { role: "user", content: userMessage },
       ],
       response_format: {
@@ -127,7 +229,10 @@ Analyze this failure and return your diagnosis as JSON.`;
     const rawContent = response?.choices?.[0]?.message?.content;
     const content = typeof rawContent === "string" ? rawContent : null;
     if (!content) throw new Error("Empty LLM response");
-    return JSON.parse(content) as ErrorAnalysis;
+    const analysis = JSON.parse(content) as ErrorAnalysis;
+    // Attach provider detection result (not from LLM — deterministic)
+    analysis.provider = provider;
+    return analysis;
   } catch (err) {
     console.error("[LLM Analysis] Failed:", err);
     // Graceful fallback — return a minimal analysis without crashing the proxy
@@ -141,6 +246,7 @@ Analyze this failure and return your diagnosis as JSON.`;
           : "Review the request payload and headers against the destination API documentation.",
       suggested_payload_diff: { remove: [], add: {}, modify: {} },
       error_category: input.statusCode === 429 ? "rate_limit" : input.statusCode >= 500 ? "server_error" : "unknown",
+      provider,
     };
   }
 }

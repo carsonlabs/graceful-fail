@@ -16,6 +16,8 @@ import Docs from "./pages/Docs";
 import StatusPage from "./pages/Status";
 import Changelog from "./pages/Changelog";
 import Referral from "./pages/Referral";
+import SlackIntegration from "./pages/SlackIntegration";
+import DigestSettings from "./pages/DigestSettings";
 
 function Router() {
   return (
@@ -32,6 +34,8 @@ function Router() {
       <Route path="/status" component={StatusPage} />
       <Route path="/changelog" component={Changelog} />
       <Route path="/dashboard/referral" component={Referral} />
+      <Route path="/dashboard/integrations/slack" component={SlackIntegration} />
+      <Route path="/dashboard/digest" component={DigestSettings} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

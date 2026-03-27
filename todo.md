@@ -152,3 +152,33 @@
 - [x] Server: tRPC testWebhookDryRun procedure — POST sample payload to URL, return status + response body
 - [x] Frontend: Show HTTP status, response time, and response body
 - [x] Pre-fill with sample non_retriable_error payload
+
+## Product Extensions
+
+### OpenAI/Anthropic Error Specialization
+- [x] Detect provider from destination URL (api.openai.com, api.anthropic.com, etc.)
+- [x] Provider-aware LLM prompt templates with model-specific fix suggestions
+- [x] OpenAI: handle 429 rate limit (RPM/TPM), 401 invalid key, 400 context length, 500 overloaded
+- [x] Anthropic: handle 529 overloaded, 400 prompt too long, 401 invalid x-api-key
+- [x] Return provider name and model hint in response envelope
+- [x] Frontend: show provider badge on request log entries
+
+### Slack Integration
+- [x] DB: slack_integrations table (userId, webhookUrl, channel, enabled, createdAt)
+- [x] Server: tRPC saveSlackWebhook, getSlackConfig, testSlackWebhook, deleteSlackWebhook
+- [x] Server: sendSlackAlert helper with rich Block Kit message
+- [x] Proxy engine: fire Slack alert on non_retriable_error events
+- [x] Frontend: Slack settings page at /dashboard/integrations/slack
+- [x] Add Integrations link to sidebar
+
+### Weekly Digest Email
+- [x] Server: generateWeeklyDigest helper — aggregate 7-day stats per user
+- [x] Server: tRPC sendDigestNow (manual trigger for testing)
+- [x] Server: scheduled digest cron (every Monday 9 AM)
+- [x] Email content: total requests, errors intercepted, top 3 failing APIs, credits used/remaining
+- [x] Frontend: digest opt-in toggle in Settings/Account page
+
+### Public API Leaderboard
+- [x] Server: tRPC getApiLeaderboard — top 10 most-failed destination domains (anonymized)
+- [x] Status page: add leaderboard section below metrics
+- [x] Show: domain, failure count (24h), most common error category

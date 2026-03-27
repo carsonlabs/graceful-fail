@@ -56,9 +56,9 @@ export default function Billing() {
 
   return (
     <AppLayout>
-      <div className="p-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground">Billing & Plan</h1>
+      <div className="p-4 md:p-8">
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">Billing & Plan</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Manage your subscription and upgrade your plan
           </p>

@@ -1,0 +1,59 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "graceful-fail"
+version = "0.1.0"
+description = "Self-healing API proxy for AI agents. Route your HTTP calls through Graceful Fail and get structured, LLM-powered fix instructions when APIs return errors."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [
+    { name = "Freedom Engineers", email = "hello@freedomengineers.tech" },
+]
+keywords = [
+    "ai-agents",
+    "api-proxy",
+    "error-handling",
+    "llm",
+    "langchain",
+    "self-healing",
+    "agent-reliability",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP",
+]
+
+dependencies = [
+    "httpx>=0.24.0",
+]
+
+[project.optional-dependencies]
+langchain = ["langchain-core>=0.1.0"]
+requests = ["requests>=2.28.0"]
+all = ["langchain-core>=0.1.0", "requests>=2.28.0"]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "respx>=0.20",
+]
+
+[project.urls]
+Homepage = "https://selfheal.dev"
+Documentation = "https://selfheal.dev/docs"
+Repository = "https://github.com/freedomengineers/graceful-fail-python"
+Changelog = "https://selfheal.dev/changelog"
+
+[tool.hatch.build.targets.wheel]
+packages = ["graceful_fail"]

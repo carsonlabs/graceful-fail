@@ -16,7 +16,7 @@ function buildSnippet(lang: Lang, apiKey: string, destUrl: string, method: strin
   switch (lang) {
     case "curl":
       return [
-        `curl -X POST https://gracefulfail.com/api/proxy \\`,
+        `curl -X POST https://selfheal.dev/api/proxy \\`,
         `  -H "Authorization: Bearer ${apiKey}" \\`,
         `  -H "X-Destination-URL: ${destUrl}" \\`,
         `  -H "X-Destination-Method: ${method}" \\`,
@@ -28,7 +28,7 @@ function buildSnippet(lang: Lang, apiKey: string, destUrl: string, method: strin
       return `import requests
 
 response = requests.post(
-    "https://gracefulfail.com/api/proxy",
+    "https://selfheal.dev/api/proxy",
     headers={
         "Authorization": "Bearer ${apiKey}",
         "X-Destination-URL": "${destUrl}",
@@ -48,7 +48,7 @@ else:
     print("Success:", data)`;
 
     case "node":
-      return `const response = await fetch("https://gracefulfail.com/api/proxy", {
+      return `const response = await fetch("https://selfheal.dev/api/proxy", {
   method: "POST",
   headers: {
     "Authorization": "Bearer ${apiKey}",
@@ -89,7 +89,7 @@ if (data.graceful_fail_intercepted) {
   meta?: { credits_used: number; duration_ms: number; tier: string };
 }
 
-const response = await fetch("https://gracefulfail.com/api/proxy", {
+const response = await fetch("https://selfheal.dev/api/proxy", {
   method: "POST",
   headers: {
     "Authorization": "Bearer ${apiKey}",

@@ -18,6 +18,8 @@ import Changelog from "./pages/Changelog";
 import Referral from "./pages/Referral";
 import SlackIntegration from "./pages/SlackIntegration";
 import DigestSettings from "./pages/DigestSettings";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 
 function Router() {
   return (
@@ -36,6 +38,8 @@ function Router() {
       <Route path="/dashboard/referral" component={Referral} />
       <Route path="/dashboard/integrations/slack" component={SlackIntegration} />
       <Route path="/dashboard/digest" component={DigestSettings} />
+      <Route path="/terms" component={Terms} />
+      <Route path="/privacy" component={Privacy} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

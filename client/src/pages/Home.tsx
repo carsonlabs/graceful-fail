@@ -346,7 +346,11 @@ export default function Home() {
             </div>
             <span>Graceful Fail</span>
           </div>
-          <p>© {new Date().getFullYear()} Graceful Fail. Built for AI engineers.</p>
+          <div className="flex items-center gap-4">
+            <p>© {new Date().getFullYear()} Graceful Fail. Built for AI engineers.</p>
+            <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
+            <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+          </div>
         </div>
       </footer>
     </div>

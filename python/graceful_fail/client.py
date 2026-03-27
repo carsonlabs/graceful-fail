@@ -103,11 +103,21 @@ class GracefulFail:
         *,
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = DEFAULT_TIMEOUT,
+        llm_api_key: Optional[str] = None,
+        llm_model: Optional[str] = None,
+        llm_base_url: Optional[str] = None,
     ):
         if not api_key:
             raise ValueError("api_key is required")
         self.api_key = api_key
         self.base_url = base_url
+        self._llm_headers: Dict[str, str] = {}
+        if llm_api_key:
+            self._llm_headers["X-LLM-API-Key"] = llm_api_key
+        if llm_model:
+            self._llm_headers["X-LLM-Model"] = llm_model
+        if llm_base_url:
+            self._llm_headers["X-LLM-Base-URL"] = llm_base_url
         self._client = httpx.Client(timeout=timeout)
 
     def request(
@@ -120,9 +130,11 @@ class GracefulFail:
         data: Any = None,
     ) -> GracefulFailResponse:
         """Send a request through the Graceful Fail proxy."""
+        merged_headers = {**self._llm_headers, **(headers or {})}
         kwargs = _build_proxy_request(
             method, url,
-            headers=headers, json=json, data=data,
+            headers=merged_headers if merged_headers else None,
+            json=json, data=data,
             api_key=self.api_key, base_url=self.base_url,
         )
         try:
@@ -170,11 +182,21 @@ class GracefulFailAsync:
         *,
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = DEFAULT_TIMEOUT,
+        llm_api_key: Optional[str] = None,
+        llm_model: Optional[str] = None,
+        llm_base_url: Optional[str] = None,
     ):
         if not api_key:
             raise ValueError("api_key is required")
         self.api_key = api_key
         self.base_url = base_url
+        self._llm_headers: Dict[str, str] = {}
+        if llm_api_key:
+            self._llm_headers["X-LLM-API-Key"] = llm_api_key
+        if llm_model:
+            self._llm_headers["X-LLM-Model"] = llm_model
+        if llm_base_url:
+            self._llm_headers["X-LLM-Base-URL"] = llm_base_url
         self._client = httpx.AsyncClient(timeout=timeout)
 
     async def request(
@@ -187,9 +209,11 @@ class GracefulFailAsync:
         data: Any = None,
     ) -> GracefulFailResponse:
         """Send a request through the Graceful Fail proxy."""
+        merged_headers = {**self._llm_headers, **(headers or {})}
         kwargs = _build_proxy_request(
             method, url,
-            headers=headers, json=json, data=data,
+            headers=merged_headers if merged_headers else None,
+            json=json, data=data,
             api_key=self.api_key, base_url=self.base_url,
         )
         try:

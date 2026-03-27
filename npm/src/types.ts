@@ -62,6 +62,12 @@ export interface GracefulFailOptions {
   baseUrl?: string;
   /** Request timeout in milliseconds. Defaults to 30000. */
   timeout?: number;
+  /** Bring your own LLM API key for error analysis (any OpenAI-compatible key). */
+  llmApiKey?: string;
+  /** Override the LLM model used for error analysis (e.g. gpt-4o). */
+  llmModel?: string;
+  /** Override the LLM API base URL (e.g. Azure OpenAI endpoint). */
+  llmBaseUrl?: string;
 }
 
 /** Options for a proxy request. */

@@ -37,6 +37,7 @@ export class GracefulFail {
   private apiKey: string;
   private baseUrl: string;
   private timeout: number;
+  private llmHeaders: Record<string, string>;
 
   constructor(options: GracefulFailOptions) {
     if (!options.apiKey) {
@@ -45,6 +46,10 @@ export class GracefulFail {
     this.apiKey = options.apiKey;
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
     this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
+    this.llmHeaders = {};
+    if (options.llmApiKey) this.llmHeaders["X-LLM-API-Key"] = options.llmApiKey;
+    if (options.llmModel) this.llmHeaders["X-LLM-Model"] = options.llmModel;
+    if (options.llmBaseUrl) this.llmHeaders["X-LLM-Base-URL"] = options.llmBaseUrl;
   }
 
   /**
@@ -59,6 +64,7 @@ export class GracefulFail {
       Authorization: `Bearer ${this.apiKey}`,
       "X-Destination-URL": url,
       "X-Destination-Method": method.toUpperCase(),
+      ...this.llmHeaders,
     };
 
     if (options.headers) {

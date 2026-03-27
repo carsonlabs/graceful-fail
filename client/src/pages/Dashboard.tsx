@@ -89,14 +89,14 @@ export default function Dashboard() {
 
   return (
     <AppLayout>
-      <div className="p-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground">Overview</h1>
+      <div className="p-4 md:p-8">
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">Overview</h1>
           <p className="text-muted-foreground text-sm mt-1">Your proxy activity this month</p>
         </div>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
           {statCards.map(({ title, value, icon: Icon, description, color, bg }) => (
             <Card key={title} className="bg-card border-border">
               <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5">
@@ -117,7 +117,7 @@ export default function Dashboard() {
           ))}
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid lg:grid-cols-2 gap-4 md:gap-6">
           {/* Recent Logs */}
           <Card className="bg-card border-border">
             <CardHeader className="flex flex-row items-center justify-between px-5 pt-5 pb-3">

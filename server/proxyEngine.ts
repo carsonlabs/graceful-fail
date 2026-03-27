@@ -54,7 +54,7 @@ export async function proxyHandler(req: Request, res: Response): Promise<void> {
 
     res.status(429).json({
       error: `Monthly request limit reached. Tier: ${apiKey.tier} (${limit} requests/month). Used: ${used}.`,
-      upgrade_url: "https://gracefulfail.com/pricing",
+      upgrade_url: "https://selfheal.dev/pricing",
     });
     return;
   }

@@ -63,9 +63,9 @@ export default function Referral() {
 
   return (
     <AppLayout>
-      <div className="p-8 max-w-3xl">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+      <div className="p-4 md:p-8 max-w-3xl">
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-xl md:text-2xl font-bold text-foreground flex items-center gap-2">
             <Share2 className="w-6 h-6 text-primary" />
             Referral Program
           </h1>

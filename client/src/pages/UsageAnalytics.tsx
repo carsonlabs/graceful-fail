@@ -32,9 +32,9 @@ export default function UsageAnalytics() {
 
   return (
     <AppLayout>
-      <div className="p-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground">Usage & Analytics</h1>
+      <div className="p-4 md:p-8">
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">Usage & Analytics</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Monthly breakdown of your proxy activity and credit consumption
           </p>

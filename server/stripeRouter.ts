@@ -7,9 +7,15 @@ import { getDb } from "./db";
 import { subscriptions, apiKeys } from "../drizzle/schema";
 import { STRIPE_PRODUCTS, type StripeTier } from "./stripeProducts";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-03-25.dahlia",
-});
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!_stripe) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) throw new Error("STRIPE_SECRET_KEY is not configured");
+    _stripe = new Stripe(key);
+  }
+  return _stripe;
+}
 
 // ── tRPC billing router ──────────────────────────────────────────────────────
 
@@ -32,7 +38,7 @@ export const billingRouter = router({
     .mutation(async ({ ctx, input }) => {
       const product = STRIPE_PRODUCTS[input.tier as StripeTier];
 
-      const session = await stripe.checkout.sessions.create({
+      const session = await getStripe().checkout.sessions.create({
         mode: "subscription",
         allow_promotion_codes: true,
         customer_email: ctx.user.email ?? undefined,
@@ -80,7 +86,7 @@ export const billingRouter = router({
       const sub = rows[0];
       if (!sub?.stripeCustomerId) throw new Error("No active subscription found");
 
-      const session = await stripe.billingPortal.sessions.create({
+      const session = await getStripe().billingPortal.sessions.create({
         customer: sub.stripeCustomerId,
         return_url: `${input.origin}/dashboard/billing`,
       });
@@ -100,7 +106,7 @@ export function registerStripeWebhook(app: express.Application) {
       let event: Stripe.Event;
 
       try {
-        event = stripe.webhooks.constructEvent(
+        event = getStripe().webhooks.constructEvent(
           req.body,
           sig,
           process.env.STRIPE_WEBHOOK_SECRET!

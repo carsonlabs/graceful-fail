@@ -120,7 +120,7 @@ export default function Playground() {
         status_code: 422,
         error_category: "validation_error",
         is_retriable: false,
-        actionable_fix_for_agent: "This is a dry-run test payload from Graceful Fail Playground.",
+        actionable_fix_for_agent: "This is a dry-run test payload from SelfHeal Playground.",
       },
     }, null, 2)
   );

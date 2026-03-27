@@ -42,8 +42,15 @@ async function startServer() {
   // Stripe webhook — must be registered BEFORE express.json() with raw body
   registerStripeWebhook(app);
 
-  // Graceful Fail proxy endpoint — raw Express route (needs raw body access)
+  // SelfHeal proxy endpoint — raw Express route (needs raw body access)
   app.post("/api/proxy", proxyHandler);
+
+  // Badge — public, cacheable
+  app.get("/badge.svg", (_req, res) => {
+    res.setHeader("Content-Type", "image/svg+xml");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.send(`<svg xmlns="http://www.w3.org/2000/svg" width="162" height="20" role="img" aria-label="built with: SelfHeal"><title>built with: SelfHeal</title><linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient><clipPath id="r"><rect width="162" height="20" rx="3" fill="#fff"/></clipPath><g clip-path="url(#r)"><rect width="72" height="20" fill="#1f2937"/><rect x="72" width="90" height="20" fill="#10b981"/><rect width="162" height="20" fill="url(#s)"/></g><g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110"><text aria-hidden="true" x="370" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="620">built with</text><text x="370" y="140" transform="scale(.1)" fill="#fff" textLength="620">built with</text><text aria-hidden="true" x="1170" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="800">SelfHeal</text><text x="1170" y="140" transform="scale(.1)" fill="#fff" textLength="800">SelfHeal</text></g></svg>`);
+  });
 
   // OpenAPI spec — public, no auth required
   app.get("/api/openapi.json", (req, res) => {

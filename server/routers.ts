@@ -160,7 +160,7 @@ export const appRouter = router({
             status_code: 422,
             error_category: "validation_error",
             is_retriable: false,
-            actionable_fix_for_agent: "This is a dry-run test payload from Graceful Fail Playground.",
+            actionable_fix_for_agent: "This is a dry-run test payload from SelfHeal Playground.",
           },
         });
 
@@ -227,14 +227,14 @@ export const appRouter = router({
         ? data.topFailingApis.map((a, i) => `${i + 1}. ${a.domain} (${a.count} failures)`).join("\n")
         : "No failed requests this week — great job!";
       await notifyOwner({
-        title: `📊 Your Graceful Fail Weekly Digest`,
+        title: `📊 Your SelfHeal Weekly Digest`,
         content: `Hi ${data.userName},\n\nHere's your weekly summary:\n\n` +
           `• Total requests: ${data.totalRequests}\n` +
           `• Errors intercepted: ${data.interceptedRequests}\n` +
           `• Success rate: ${data.successRate}%\n` +
           `• Credits used: ${data.creditsUsed}\n\n` +
           `Top failing APIs this week:\n${topApisText}\n\n` +
-          `View full logs: https://aiproxy-gwqcgefq.manus.space/dashboard/logs`,
+          `View full logs: https://selfheal.dev/dashboard/logs`,
       });
       return { sent: true };
     }),

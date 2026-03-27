@@ -73,7 +73,7 @@ const RELEASES: Release[] = [
     version: "1.0.0",
     date: "March 26, 2026",
     tag: "major",
-    summary: "Initial release of Graceful Fail — the intelligent API proxy for AI agents.",
+    summary: "Initial release of SelfHeal — the intelligent API proxy for AI agents.",
     changes: [
       { type: "feature", text: "POST /api/proxy — forward any HTTP request to any destination API" },
       { type: "feature", text: "Zero-overhead pass-through for 2xx/3xx responses" },
@@ -107,7 +107,7 @@ export default function Changelog() {
             <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
               <Zap className="w-3.5 h-3.5 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-sm">Graceful Fail</span>
+            <span className="font-semibold text-sm">SelfHeal</span>
             <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">Changelog</span>
           </Link>

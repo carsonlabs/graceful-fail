@@ -85,7 +85,7 @@ export default function SlackIntegration() {
               <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
               <div className="text-sm text-muted-foreground space-y-1">
                 <p className="font-medium text-foreground">How it works</p>
-                <p>When your agent hits a non-retriable error (like an invalid API key or a malformed request), Graceful Fail sends a rich Slack message with the error details and the exact fix your agent needs.</p>
+                <p>When your agent hits a non-retriable error (like an invalid API key or a malformed request), SelfHeal sends a rich Slack message with the error details and the exact fix your agent needs.</p>
                 <a
                   href="https://api.slack.com/messaging/webhooks"
                   target="_blank"

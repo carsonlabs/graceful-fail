@@ -5,14 +5,14 @@ const SECTIONS = [
   {
     id: "agreement",
     title: "1. Agreement to Terms",
-    content: `By accessing or using Graceful Fail ("the Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use the Service. These Terms apply to all visitors, users, and others who access or use the Service.
+    content: `By accessing or using SelfHeal ("the Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use the Service. These Terms apply to all visitors, users, and others who access or use the Service.
 
 The Service is operated by Freedom Engineers ("we," "us," or "our"). If you are using the Service on behalf of an organization, you represent that you have the authority to bind that organization to these Terms.`,
   },
   {
     id: "description",
     title: "2. Description of Service",
-    content: `Graceful Fail is an API proxy service that intercepts failed HTTP requests made by AI agents and automated systems, performs LLM-powered error analysis on those failures, and returns structured diagnostic information and remediation suggestions. The Service includes the proxy endpoint, developer dashboard, API key management, request logging, webhook notifications, and related features.`,
+    content: `SelfHeal is an API proxy service that intercepts failed HTTP requests made by AI agents and automated systems, performs LLM-powered error analysis on those failures, and returns structured diagnostic information and remediation suggestions. The Service includes the proxy endpoint, developer dashboard, API key management, request logging, webhook notifications, and related features.`,
   },
   {
     id: "accounts",
@@ -131,7 +131,7 @@ export default function Terms() {
             <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
               <Zap className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-sm tracking-tight">Graceful Fail</span>
+            <span className="font-semibold text-sm tracking-tight">SelfHeal</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
             <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
@@ -187,7 +187,7 @@ export default function Terms() {
         {/* Footer */}
         <div className="mt-16 pt-8 border-t border-border text-center">
           <p className="text-xs text-muted-foreground">
-            Graceful Fail is a product of Freedom Engineers ·{" "}
+            SelfHeal is a product of Freedom Engineers ·{" "}
             <a href="mailto:hello@gracefulfail.dev" className="hover:text-foreground transition-colors">
               hello@gracefulfail.dev
             </a>

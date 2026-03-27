@@ -144,7 +144,7 @@ export async function dispatchWebhook(
             `Last HTTP status: ${lastStatusCode ?? "no response (timeout/network error)"}\n` +
             `Delivery ID: ${deliveryId}\n` +
             `Time: ${new Date().toISOString()}\n\n` +
-            `Check the Webhooks page in your Graceful Fail dashboard for details and to re-test the endpoint.`,
+            `Check the Webhooks page in your SelfHeal dashboard for details and to re-test the endpoint.`,
         });
       } catch (notifyErr) {
         console.warn("[Webhook] Failed to send owner notification:", notifyErr);

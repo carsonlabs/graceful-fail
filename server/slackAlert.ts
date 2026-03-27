@@ -95,7 +95,7 @@ export async function sendSlackAlert(webhookUrl: string, payload: SlackAlertPayl
       elements: [
         {
           type: "mrkdwn",
-          text: `Intercepted by *Graceful Fail* ${payload.apiKeyName ? `· Key: ${payload.apiKeyName}` : ""} · <https://aiproxy-gwqcgefq.manus.space/dashboard/logs|View logs>`,
+          text: `Intercepted by *SelfHeal* ${payload.apiKeyName ? `· Key: ${payload.apiKeyName}` : ""} · <https://selfheal.dev/dashboard/logs|View logs>`,
         },
       ],
     },
@@ -141,7 +141,7 @@ export async function sendSlackTestMessage(webhookUrl: string, channel?: string 
         blocks: [
           {
             type: "header",
-            text: { type: "plain_text", text: "✅ Graceful Fail — Slack Connected!", emoji: true },
+            text: { type: "plain_text", text: "✅ SelfHeal — Slack Connected!", emoji: true },
           },
           {
             type: "section",
@@ -152,7 +152,7 @@ export async function sendSlackTestMessage(webhookUrl: string, channel?: string 
           },
           {
             type: "context",
-            elements: [{ type: "mrkdwn", text: "Sent from <https://aiproxy-gwqcgefq.manus.space/dashboard/integrations/slack|Graceful Fail Integrations>" }],
+            elements: [{ type: "mrkdwn", text: "Sent from <https://selfheal.dev/dashboard/integrations/slack|SelfHeal Integrations>" }],
           },
         ],
       },

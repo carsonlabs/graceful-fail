@@ -105,7 +105,7 @@ export const webhooksRouter = router({
 
       await dispatchWebhook(ctx.user.id, "all", {
         test: true,
-        message: "This is a test event from Graceful Fail",
+        message: "This is a test event from SelfHeal",
         endpoint_id: input.id,
         timestamp: new Date().toISOString(),
       });

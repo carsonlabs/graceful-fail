@@ -294,7 +294,7 @@ export default function Dashboard() {
           <CardContent className="px-5 pb-5">
             <div className="rounded-lg bg-background border border-border p-4">
               <p className="text-xs text-muted-foreground mb-3 font-mono">
-                # Route your agent's API calls through Graceful Fail
+                # Route your agent's API calls through SelfHeal
               </p>
               <pre className="text-xs font-mono text-foreground/90 overflow-x-auto whitespace-pre">{`POST /api/proxy
 Authorization: Bearer gf_your_key_here

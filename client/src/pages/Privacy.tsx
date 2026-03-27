@@ -5,7 +5,7 @@ const SECTIONS = [
   {
     id: "overview",
     title: "1. Overview",
-    content: `This Privacy Policy explains how Freedom Engineers ("we," "us," or "our") collects, uses, stores, and shares information when you use Graceful Fail ("the Service"). We are committed to being transparent about our data practices and to handling your data with care.
+    content: `This Privacy Policy explains how Freedom Engineers ("we," "us," or "our") collects, uses, stores, and shares information when you use SelfHeal ("the Service"). We are committed to being transparent about our data practices and to handling your data with care.
 
 The short version: We collect the minimum data necessary to operate the Service. We do not sell your data. We do not store your API request bodies or third-party API credentials. You can export or delete your data at any time.`,
   },
@@ -135,7 +135,7 @@ export default function Privacy() {
             <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
               <Zap className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-sm tracking-tight">Graceful Fail</span>
+            <span className="font-semibold text-sm tracking-tight">SelfHeal</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
             <Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
@@ -199,7 +199,7 @@ export default function Privacy() {
         {/* Footer */}
         <div className="mt-16 pt-8 border-t border-border text-center">
           <p className="text-xs text-muted-foreground">
-            Graceful Fail is a product of Freedom Engineers ·{" "}
+            SelfHeal is a product of Freedom Engineers ·{" "}
             <a href="mailto:hello@gracefulfail.dev" className="hover:text-foreground transition-colors">
               hello@gracefulfail.dev
             </a>

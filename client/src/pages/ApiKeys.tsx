@@ -69,7 +69,7 @@ export default function ApiKeys() {
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-foreground">API Keys</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Manage your Graceful Fail API keys. Keys are hashed — we never store the plaintext.
+              Manage your SelfHeal API keys. Keys are hashed — we never store the plaintext.
             </p>
           </div>
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setNewKey(null); }}>

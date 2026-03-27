@@ -1,17 +1,17 @@
 /**
- * OpenAPI 3.1 specification for the Graceful Fail API Proxy.
+ * OpenAPI 3.1 specification for the SelfHeal API Proxy.
  * Served at GET /api/openapi.json — no authentication required.
  */
 export function buildOpenApiSpec(baseUrl: string) {
   return {
     openapi: "3.1.0",
     info: {
-      title: "Graceful Fail API",
+      title: "SelfHeal API",
       version: "1.0.0",
       description:
-        "An intelligent API proxy for AI agents. Graceful Fail sits between your agent and any third-party API. On success it passes the response through with zero overhead. On failure it returns a structured, LLM-generated analysis that tells your agent exactly what went wrong and how to fix it.",
+        "An intelligent API proxy for AI agents. SelfHeal sits between your agent and any third-party API. On success it passes the response through with zero overhead. On failure it returns a structured, LLM-generated analysis that tells your agent exactly what went wrong and how to fix it.",
       contact: {
-        name: "Graceful Fail Support",
+        name: "SelfHeal Support",
         url: `${baseUrl}/docs`,
       },
       license: {
@@ -79,7 +79,7 @@ export function buildOpenApiSpec(baseUrl: string) {
             },
             "4XX": {
               description:
-                "Intercepted error: the destination returned 4xx. The response body is the Graceful Fail error envelope.",
+                "Intercepted error: the destination returned 4xx. The response body is the SelfHeal error envelope.",
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/GracefulFailErrorEnvelope" },
@@ -111,7 +111,7 @@ export function buildOpenApiSpec(baseUrl: string) {
             },
             "5XX": {
               description:
-                "Intercepted error: the destination returned 5xx. Same Graceful Fail envelope as 4xx.",
+                "Intercepted error: the destination returned 5xx. Same SelfHeal envelope as 4xx.",
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/GracefulFailErrorEnvelope" },
@@ -119,7 +119,7 @@ export function buildOpenApiSpec(baseUrl: string) {
               },
             },
             "401": {
-              description: "Missing or invalid Graceful Fail API key.",
+              description: "Missing or invalid SelfHeal API key.",
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ProxyAuthError" },
@@ -144,7 +144,7 @@ export function buildOpenApiSpec(baseUrl: string) {
           type: "http",
           scheme: "bearer",
           bearerFormat: "API Key",
-          description: "Graceful Fail API key. Format: `gf_<hex>`. Create keys in the Dashboard.",
+          description: "SelfHeal API key. Format: `gf_<hex>`. Create keys in the Dashboard.",
         },
       },
       schemas: {

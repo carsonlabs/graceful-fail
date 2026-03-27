@@ -88,7 +88,7 @@ function SidebarContent({
           <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
             <Zap className="w-4 h-4 text-primary-foreground" />
           </div>
-          <span className="font-semibold text-foreground text-sm tracking-tight">Graceful Fail</span>
+          <span className="font-semibold text-foreground text-sm tracking-tight">SelfHeal</span>
         </Link>
       </div>
 

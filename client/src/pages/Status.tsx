@@ -154,7 +154,7 @@ export default function StatusPage() {
             <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
               <Zap className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-sm tracking-tight">Graceful Fail</span>
+            <span className="font-semibold text-sm tracking-tight">SelfHeal</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
             <Link href="/" className="hover:text-foreground transition-colors">Home</Link>

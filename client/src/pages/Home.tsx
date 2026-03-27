@@ -84,8 +84,8 @@ const response = await fetch("https://api.crm.com/contacts", {
 });
 // Returns 422 — agent enters doom loop
 
-// After: Route through Graceful Fail
-const response = await fetch("https://your-app.com/api/proxy", {
+// After: Route through SelfHeal
+const response = await fetch("https://selfheal.dev/api/proxy", {
   method: "POST",
   headers: {
     "Authorization": "Bearer gf_your_key",
@@ -122,11 +122,12 @@ export default function Home() {
             <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
               <Zap className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-sm tracking-tight">Graceful Fail</span>
+            <span className="font-semibold text-sm tracking-tight">SelfHeal</span>
           </div>
           <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
             <a href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</a>
+            <a href="#sdks" className="hover:text-foreground transition-colors">SDKs</a>
             <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
             <Link href="/docs" className="hover:text-foreground transition-colors">Docs</Link>
             <Link href="/status" className="hover:text-foreground transition-colors">Status</Link>
@@ -172,10 +173,19 @@ export default function Home() {
             how to fix their own mistakes
           </h1>
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-            Graceful Fail intercepts failed API calls, analyzes the error with an LLM, and returns
+            SelfHeal intercepts failed API calls, analyzes the error with an LLM, and returns
             structured, actionable correction instructions — so your agents can self-heal and retry
             autonomously.
           </p>
+          {/* SDK install badges */}
+          <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
+            <code className="text-xs font-mono bg-card border border-border rounded-lg px-4 py-2 text-muted-foreground">
+              pip install <span className="text-primary">graceful-fail</span>
+            </code>
+            <code className="text-xs font-mono bg-card border border-border rounded-lg px-4 py-2 text-muted-foreground">
+              npm install <span className="text-primary">graceful-fail</span>
+            </code>
+          </div>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button
               size="lg"
@@ -246,7 +256,7 @@ export default function Home() {
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">One line of code to add</h2>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              Replace your destination URL with the Graceful Fail proxy endpoint. That's it.
+              Replace your destination URL with the SelfHeal proxy endpoint. That's it.
             </p>
           </div>
           <div className="max-w-3xl mx-auto">
@@ -260,6 +270,76 @@ export default function Home() {
               <pre className="p-5 text-xs font-mono text-foreground/90 overflow-x-auto leading-relaxed whitespace-pre-wrap">
                 {CODE_EXAMPLE}
               </pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SDKs */}
+      <section id="sdks" className="py-24">
+        <div className="container">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">SDKs for every stack</h2>
+            <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+              Integrate in minutes with official SDKs for Python and Node.js. LangChain and CrewAI integrations included.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            {/* Python */}
+            <div className="rounded-xl border border-border bg-card p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <span className="text-blue-400 font-bold text-sm">Py</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground">Python SDK</h3>
+                  <p className="text-xs text-muted-foreground">PyPI: graceful-fail</p>
+                </div>
+              </div>
+              <div className="rounded-lg bg-[#0d1117] border border-border p-4 mb-4">
+                <pre className="text-xs font-mono text-[#e6edf3] leading-relaxed">{`pip install 'graceful-fail[langchain]'
+
+from graceful_fail import GracefulFail
+
+gf = GracefulFail(api_key="gf_your_key")
+resp = gf.post(url, json=payload)
+
+if resp.intercepted:
+    print(resp.error_analysis.actionable_fix_for_agent)`}</pre>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-0.5">LangChain</span>
+                <span className="text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-0.5">CrewAI</span>
+                <span className="text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-0.5">Async</span>
+              </div>
+            </div>
+            {/* Node.js */}
+            <div className="rounded-xl border border-border bg-card p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <span className="text-emerald-400 font-bold text-sm">JS</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground">Node.js / TypeScript SDK</h3>
+                  <p className="text-xs text-muted-foreground">npm: graceful-fail</p>
+                </div>
+              </div>
+              <div className="rounded-lg bg-[#0d1117] border border-border p-4 mb-4">
+                <pre className="text-xs font-mono text-[#e6edf3] leading-relaxed">{`npm install graceful-fail
+
+import { GracefulFail } from "graceful-fail";
+
+const gf = new GracefulFail({ apiKey: "gf_your_key" });
+const resp = await gf.post(url, { json: payload });
+
+if (resp.intercepted)
+  console.log(resp.errorAnalysis.actionable_fix_for_agent);`}</pre>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-0.5">LangChain.js</span>
+                <span className="text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-0.5">TypeScript</span>
+                <span className="text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-0.5">ESM + CJS</span>
+              </div>
             </div>
           </div>
         </div>
@@ -344,10 +424,10 @@ export default function Home() {
             <div className="w-5 h-5 rounded bg-primary flex items-center justify-center">
               <Zap className="w-3 h-3 text-primary-foreground" />
             </div>
-            <span>Graceful Fail</span>
+            <span>SelfHeal</span>
           </div>
           <div className="flex items-center gap-4">
-            <p>© {new Date().getFullYear()} Graceful Fail. Built for AI engineers.</p>
+            <p>© {new Date().getFullYear()} SelfHeal. Built for AI engineers.</p>
             <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
           </div>

@@ -200,7 +200,7 @@ export default function Docs() {
             <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
               <Zap className="w-3.5 h-3.5 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-sm">Graceful Fail</span>
+            <span className="font-semibold text-sm">SelfHeal</span>
             <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">API Reference</span>
           </Link>
@@ -236,6 +236,7 @@ export default function Docs() {
               { id: "responses", label: "Response Schema" },
               { id: "error-categories", label: "Error Categories" },
               { id: "code-examples", label: "Code Examples" },
+              { id: "sdks", label: "SDKs" },
               { id: "rate-limits", label: "Rate Limits" },
               { id: "openapi", label: "OpenAPI Spec" },
             ].map(({ id, label }) => (
@@ -259,7 +260,7 @@ export default function Docs() {
             </div>
             <h1 className="text-4xl font-bold text-foreground mb-3">API Reference</h1>
             <p className="text-lg text-muted-foreground max-w-2xl">
-              Graceful Fail is a single-endpoint proxy that sits between your AI agent and any third-party API.
+              SelfHeal is a single-endpoint proxy that sits between your AI agent and any third-party API.
               On success, it passes the response through with zero overhead. On failure, it returns a structured,
               LLM-generated analysis that tells your agent exactly what went wrong and how to fix it.
             </p>
@@ -269,7 +270,7 @@ export default function Docs() {
           <SectionHeading id="overview">Overview</SectionHeading>
           <p className="text-muted-foreground text-sm leading-relaxed mb-4">
             Instead of your agent receiving a raw <code className="font-mono bg-muted px-1 rounded text-xs">422 Unprocessable Entity</code> and
-            halting, Graceful Fail intercepts the error, strips sensitive headers, sends the context to an LLM,
+            halting, SelfHeal intercepts the error, strips sensitive headers, sends the context to an LLM,
             and returns a structured JSON envelope your agent can act on immediately — including whether to retry,
             what field to change, and a plain-English explanation.
           </p>
@@ -343,7 +344,7 @@ export default function Docs() {
           {/* Responses */}
           <SectionHeading id="responses">Response Schema</SectionHeading>
           <p className="text-sm text-muted-foreground mb-3">
-            Graceful Fail returns two types of responses depending on the destination API's status code.
+            SelfHeal returns two types of responses depending on the destination API's status code.
           </p>
 
           <h3 className="text-sm font-semibold text-foreground mb-2 mt-5">Pass-through (2xx / 3xx)</h3>
@@ -354,7 +355,7 @@ export default function Docs() {
 
           <h3 className="text-sm font-semibold text-foreground mb-2">Intercepted Error (4xx / 5xx)</h3>
           <p className="text-xs text-muted-foreground mb-2">
-            The response status code mirrors the destination. The body is the Graceful Fail envelope below. One credit is consumed.
+            The response status code mirrors the destination. The body is the SelfHeal envelope below. One credit is consumed.
           </p>
           <CodeBlock code={errorResponseExample} className="mb-4" />
 
@@ -483,6 +484,46 @@ export default function Docs() {
             ))}
           </div>
           <CodeBlock code={snippet} className="mb-8" />
+
+          {/* SDKs */}
+          <SectionHeading id="sdks">Official SDKs</SectionHeading>
+          <p className="text-sm text-muted-foreground mb-4">
+            Official SDKs wrap the proxy endpoint with typed clients, error handling, and framework integrations.
+            Use these instead of raw HTTP for a better developer experience.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-4 mb-4">
+            <div className="rounded-lg border border-border bg-card px-4 py-3">
+              <p className="text-sm font-semibold text-foreground mb-1">Python</p>
+              <CodeBlock code={`pip install 'graceful-fail[langchain]'`} className="mb-2" />
+              <p className="text-xs text-muted-foreground">Sync + async client, LangChain tool, CrewAI compatible, requests-style session wrapper.</p>
+              <a href="https://pypi.org/project/graceful-fail/" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline mt-1 inline-block">
+                View on PyPI
+              </a>
+            </div>
+            <div className="rounded-lg border border-border bg-card px-4 py-3">
+              <p className="text-sm font-semibold text-foreground mb-1">Node.js / TypeScript</p>
+              <CodeBlock code={`npm install graceful-fail`} className="mb-2" />
+              <p className="text-xs text-muted-foreground">Full TypeScript types, LangChain.js tool, ESM + CJS, native fetch (zero deps).</p>
+              <a href="https://www.npmjs.com/package/graceful-fail" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline mt-1 inline-block">
+                View on npm
+              </a>
+            </div>
+          </div>
+          <div className="rounded-lg border border-border bg-card px-4 py-3 mb-8">
+            <p className="text-sm font-semibold text-foreground mb-2">Also available</p>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {[
+                { name: "n8n Node", desc: "Community node for n8n workflows" },
+                { name: "GitHub Action", desc: "CI/CD integration with one line" },
+                { name: "Postman Collection", desc: "Import and test instantly" },
+              ].map(({ name, desc }) => (
+                <div key={name}>
+                  <p className="text-xs font-medium text-foreground">{name}</p>
+                  <p className="text-xs text-muted-foreground">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
 
           {/* Rate limits */}
           <SectionHeading id="rate-limits">Rate Limits</SectionHeading>

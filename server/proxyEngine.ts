@@ -27,7 +27,7 @@ export async function proxyHandler(req: Request, res: Response): Promise<void> {
   const rawKey = extractBearerToken(req);
   if (!rawKey) {
     res.status(401).json({
-      error: "Missing API key. Provide your Graceful Fail key as: Authorization: Bearer gf_...",
+      error: "Missing API key. Provide your SelfHeal key as: Authorization: Bearer gf_...",
     });
     return;
   }

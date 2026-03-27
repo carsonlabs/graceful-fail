@@ -70,7 +70,7 @@ export default function Referral() {
             Referral Program
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Share Graceful Fail with other developers. You both get <strong className="text-foreground">100 bonus credits</strong> when they sign up.
+            Share SelfHeal with other developers. You both get <strong className="text-foreground">100 bonus credits</strong> when they sign up.
           </p>
         </div>
 
@@ -143,7 +143,7 @@ export default function Referral() {
             <div className="space-y-4">
               {[
                 { step: "1", title: "Share your link", desc: "Copy your unique referral link above and share it with developers, AI agent builders, or anyone integrating APIs." },
-                { step: "2", title: "They sign up", desc: "When someone creates a Graceful Fail account using your link, the referral is automatically tracked." },
+                { step: "2", title: "They sign up", desc: "When someone creates a SelfHeal account using your link, the referral is automatically tracked." },
                 { step: "3", title: "Both of you get 100 credits", desc: "Once they sign up, 100 bonus credits are instantly added to both accounts — no waiting, no minimums." },
                 { step: "4", title: "Credits offset LLM costs", desc: "Bonus credits are applied before your plan's monthly allowance, so every successful referral directly reduces your bill." },
               ].map(({ step, title, desc }) => (

@@ -34,6 +34,21 @@ const inputSchema = z.object({
 });
 
 function formatResponse(resp: GracefulFailResponse): string {
+  // Auto-fixed: SelfHeal patched the payload and retried successfully
+  if (resp.autoFixed && resp.errorAnalysis) {
+    const ea = resp.errorAnalysis;
+    const parts = [
+      `AUTO-FIXED (original error: HTTP ${ea.error_category})`,
+      `SelfHeal automatically corrected the request and retried successfully.`,
+      `What was wrong: ${ea.human_readable_explanation}`,
+      `What was changed: ${JSON.stringify(resp.appliedDiff)}`,
+      `Result (HTTP ${resp.statusCode}):`,
+      typeof resp.data === "string" ? resp.data : JSON.stringify(resp.data, null, 2),
+    ];
+    return parts.join("\n");
+  }
+
+  // Intercepted but not auto-fixed
   if (resp.intercepted && resp.errorAnalysis) {
     const ea = resp.errorAnalysis;
     const parts = [

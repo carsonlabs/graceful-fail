@@ -5,6 +5,7 @@ import { billingRouter } from "./stripeRouter";
 import { webhooksRouter } from "./webhookRouter";
 import { referralRouter } from "./referralRouter";
 import { slackRouter } from "./slackRouter";
+import { sentryRouter } from "./sentryRouter";
 import { z } from "zod";
 import {
   createApiKey,
@@ -148,6 +149,7 @@ export const appRouter = router({
   webhooks: webhooksRouter,
   referrals: referralRouter,
   slack: slackRouter,
+  sentry: sentryRouter,
   playground: router({
     webhookDryRun: protectedProcedure
       .input(

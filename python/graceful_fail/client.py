@@ -22,12 +22,14 @@ def _build_proxy_request(
     data: Any = None,
     api_key: str,
     base_url: str,
+    auto_retry: bool = True,
 ) -> dict:
     """Build the kwargs for an httpx request to the proxy endpoint."""
     proxy_headers = {
         "Authorization": f"Bearer {api_key}",
         "X-Destination-URL": url,
         "X-Destination-Method": method.upper(),
+        "X-Auto-Retry": "true" if auto_retry else "false",
     }
     if headers:
         proxy_headers.update(headers)
@@ -69,6 +71,10 @@ def _parse_response(response: httpx.Response) -> GracefulFailResponse:
 
     body = response.json()
 
+    # Check if SelfHeal auto-fixed the request
+    if isinstance(body, dict) and body.get("selfheal_auto_fixed"):
+        return GracefulFailResponse.from_auto_fixed(body)
+
     # Check if this is an intercepted error response
     if isinstance(body, dict) and body.get("graceful_fail_intercepted"):
         return GracefulFailResponse.from_intercepted(body)
@@ -103,6 +109,7 @@ class GracefulFail:
         *,
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = DEFAULT_TIMEOUT,
+        auto_retry: bool = True,
         llm_api_key: Optional[str] = None,
         llm_model: Optional[str] = None,
         llm_base_url: Optional[str] = None,
@@ -111,6 +118,7 @@ class GracefulFail:
             raise ValueError("api_key is required")
         self.api_key = api_key
         self.base_url = base_url
+        self._auto_retry = auto_retry
         self._llm_headers: Dict[str, str] = {}
         if llm_api_key:
             self._llm_headers["X-LLM-API-Key"] = llm_api_key
@@ -136,6 +144,7 @@ class GracefulFail:
             headers=merged_headers if merged_headers else None,
             json=json, data=data,
             api_key=self.api_key, base_url=self.base_url,
+            auto_retry=self._auto_retry,
         )
         try:
             response = self._client.request(**kwargs)
@@ -182,6 +191,7 @@ class GracefulFailAsync:
         *,
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = DEFAULT_TIMEOUT,
+        auto_retry: bool = True,
         llm_api_key: Optional[str] = None,
         llm_model: Optional[str] = None,
         llm_base_url: Optional[str] = None,
@@ -190,6 +200,7 @@ class GracefulFailAsync:
             raise ValueError("api_key is required")
         self.api_key = api_key
         self.base_url = base_url
+        self._auto_retry = auto_retry
         self._llm_headers: Dict[str, str] = {}
         if llm_api_key:
             self._llm_headers["X-LLM-API-Key"] = llm_api_key
@@ -215,6 +226,7 @@ class GracefulFailAsync:
             headers=merged_headers if merged_headers else None,
             json=json, data=data,
             api_key=self.api_key, base_url=self.base_url,
+            auto_retry=self._auto_retry,
         )
         try:
             response = await self._client.request(**kwargs)

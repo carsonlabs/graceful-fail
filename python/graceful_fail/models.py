@@ -11,8 +11,8 @@ class PayloadDiff:
     """Suggested changes to fix the request payload."""
 
     remove: List[str] = field(default_factory=list)
-    add: Dict[str, str] = field(default_factory=dict)
-    modify: Dict[str, str] = field(default_factory=dict)
+    add: Dict[str, Any] = field(default_factory=dict)
+    modify: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> PayloadDiff:
@@ -23,12 +23,55 @@ class PayloadDiff:
         )
 
     def apply(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Apply the suggested diff to a payload and return the corrected version."""
-        result = {k: v for k, v in payload.items() if k not in self.remove}
-        result.update(self.modify)
-        for key, type_hint in self.add.items():
-            if key not in result:
-                result[key] = f"<{type_hint}>"
+        """Apply the suggested diff to a payload and return the corrected version.
+
+        Supports dot-notation keys for nested fields (e.g. "messages.0.role").
+        """
+        import copy
+        import json
+
+        result = copy.deepcopy(payload)
+
+        def _set_nested(obj: Any, path: str, value: Any) -> None:
+            parts = path.split(".")
+            current = obj
+            for part in parts[:-1]:
+                if isinstance(current, list):
+                    current = current[int(part)]
+                elif isinstance(current, dict):
+                    current.setdefault(part, {})
+                    current = current[part]
+                else:
+                    return
+            last = parts[-1]
+            if isinstance(current, list):
+                current[int(last)] = value
+            elif isinstance(current, dict):
+                current[last] = value
+
+        def _delete_nested(obj: Any, path: str) -> None:
+            parts = path.split(".")
+            current = obj
+            for part in parts[:-1]:
+                if isinstance(current, list):
+                    current = current[int(part)]
+                elif isinstance(current, dict):
+                    if part not in current:
+                        return
+                    current = current[part]
+                else:
+                    return
+            last = parts[-1]
+            if isinstance(current, dict):
+                current.pop(last, None)
+
+        for key in self.remove:
+            _delete_nested(result, key)
+        for key, value in self.add.items():
+            _set_nested(result, key, value)
+        for key, value in self.modify.items():
+            _set_nested(result, key, value)
+
         return result
 
 
@@ -72,9 +115,11 @@ class GracefulFailResponse:
 
     status_code: int
     intercepted: bool
-    data: Any
+    auto_fixed: bool = False
+    data: Any = None
     error_analysis: Optional[ErrorAnalysis] = None
     raw_response: Any = None
+    applied_diff: Optional[PayloadDiff] = None
     credits_used: int = 0
     duration_ms: int = 0
 
@@ -83,7 +128,24 @@ class GracefulFailResponse:
         return cls(
             status_code=status_code,
             intercepted=False,
+            auto_fixed=False,
             data=data,
+        )
+
+    @classmethod
+    def from_auto_fixed(cls, data: Dict[str, Any]) -> GracefulFailResponse:
+        meta = data.get("meta", {})
+        original_error = data.get("original_error", {})
+        return cls(
+            status_code=meta.get("retry_status_code", 0),
+            intercepted=True,
+            auto_fixed=True,
+            data=data.get("data"),
+            error_analysis=ErrorAnalysis.from_dict(original_error.get("error_analysis", {})),
+            raw_response=original_error.get("raw_response"),
+            applied_diff=PayloadDiff.from_dict(data.get("applied_diff", {})),
+            credits_used=meta.get("credits_used", 1),
+            duration_ms=meta.get("duration_ms", 0),
         )
 
     @classmethod
@@ -92,6 +154,7 @@ class GracefulFailResponse:
         return cls(
             status_code=data.get("original_status_code", 0),
             intercepted=True,
+            auto_fixed=False,
             data=data,
             error_analysis=ErrorAnalysis.from_dict(data.get("error_analysis", {})),
             raw_response=data.get("raw_destination_response"),

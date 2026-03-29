@@ -134,22 +134,37 @@ describe("applyDiff", () => {
       { name: "Alice", email: "wrong" },
       {
         remove: ["name"],
-        add: { first_name: "string" },
+        add: { first_name: "Jane" },
         modify: { email: "alice@example.com" },
       },
     );
 
     expect(result).toEqual({
       email: "alice@example.com",
-      first_name: "<string>",
+      first_name: "Jane",
     });
   });
 
-  it("does not overwrite existing keys on add", () => {
+  it("overwrites existing keys on add (values are exact)", () => {
     const result = applyDiff(
-      { email: "alice@example.com" },
-      { remove: [], add: { email: "string" }, modify: {} },
+      { email: "old@example.com" },
+      { remove: [], add: { email: "new@example.com" }, modify: {} },
     );
-    expect(result.email).toBe("alice@example.com");
+    expect(result.email).toBe("new@example.com");
+  });
+
+  it("supports dot-notation for nested fields", () => {
+    const result = applyDiff(
+      { user: { name: "Alice", age: 30 }, tags: ["a", "b"] },
+      {
+        remove: ["user.age"],
+        add: { "user.role": "admin" },
+        modify: { "user.name": "Bob" },
+      },
+    );
+    expect(result).toEqual({
+      user: { name: "Bob", role: "admin" },
+      tags: ["a", "b"],
+    });
   });
 });

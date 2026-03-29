@@ -1,18 +1,28 @@
 """
-Graceful Fail — Self-healing API proxy for AI agents.
+SelfHeal (graceful-fail) — Self-healing API proxy for AI agents.
 
-Route your HTTP calls through Graceful Fail and get structured,
-LLM-powered fix instructions when APIs return errors.
+Route your HTTP calls through SelfHeal. When an API returns an error,
+SelfHeal diagnoses it with an LLM, fixes the payload, and retries
+automatically — returning a success response as if nothing went wrong.
 
 Usage:
     from graceful_fail import GracefulFail
 
     gf = GracefulFail(api_key="gf_your_key")
-    response = gf.request("POST", "https://api.example.com/users", json={"name": "Alice"})
+    response = gf.request("POST", "https://api.openai.com/v1/chat/completions",
+        json={"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Hi"}]},
+        headers={"Authorization": "Bearer sk-..."},
+    )
 
-    if response.intercepted:
+    if response.auto_fixed:
+        # SelfHeal fixed the payload and retried successfully
+        print("Auto-fixed!", response.data)
+        print("What was changed:", response.applied_diff)
+    elif response.intercepted:
+        # Error detected but couldn't be auto-fixed
         print(response.error_analysis.actionable_fix_for_agent)
     else:
+        # Success — passed through transparently
         print(response.data)
 """
 

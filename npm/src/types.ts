@@ -1,8 +1,8 @@
 /** Suggested changes to fix the request payload. */
 export interface PayloadDiff {
   remove: string[];
-  add: Record<string, string>;
-  modify: Record<string, string>;
+  add: Record<string, unknown>;
+  modify: Record<string, unknown>;
 }
 
 /** LLM-generated analysis of an API error. */
@@ -25,14 +25,37 @@ export interface ErrorAnalysis {
 /** Full Graceful Fail intercepted error envelope. */
 export interface InterceptedEnvelope {
   graceful_fail_intercepted: true;
+  selfheal_auto_fixed?: boolean;
   original_status_code: number;
   destination_url: string;
   error_analysis: ErrorAnalysis;
   raw_destination_response: unknown;
+  retry_attempted?: boolean;
+  retry_status_code?: number;
+  retry_response?: unknown;
   meta: {
     credits_used: number;
     duration_ms: number;
     tier: string;
+    retry_status_code?: number;
+  };
+}
+
+/** Response envelope when SelfHeal auto-fixed the request. */
+export interface AutoFixedEnvelope {
+  selfheal_auto_fixed: true;
+  data: unknown;
+  original_error: {
+    status_code: number;
+    error_analysis: ErrorAnalysis;
+    raw_response: unknown;
+  };
+  applied_diff: PayloadDiff;
+  meta: {
+    credits_used: number;
+    duration_ms: number;
+    tier: string;
+    retry_status_code: number;
   };
 }
 
@@ -42,13 +65,17 @@ export interface GracefulFailResponse<T = unknown> {
   statusCode: number;
   /** True if the error was intercepted and analyzed by the LLM. */
   intercepted: boolean;
-  /** Response data. On success, the destination response. On interception, the full envelope. */
+  /** True if SelfHeal auto-fixed the payload and the retry succeeded. */
+  autoFixed: boolean;
+  /** Response data. On success, the destination response. On auto-fix, the retried response. On interception, the full envelope. */
   data: T;
-  /** LLM-generated error analysis (only when intercepted). */
+  /** LLM-generated error analysis (only when intercepted or auto-fixed). */
   errorAnalysis?: ErrorAnalysis;
   /** The raw destination API response body (only when intercepted). */
   rawResponse?: unknown;
-  /** Credits consumed (0 for pass-through, 1 for intercepted). */
+  /** The payload diff that was applied (only when auto-fixed). */
+  appliedDiff?: PayloadDiff;
+  /** Credits consumed (0 for pass-through, 1 for intercepted/auto-fixed). */
   creditsUsed: number;
   /** Total proxy round-trip time in milliseconds. */
   durationMs: number;
@@ -62,6 +89,8 @@ export interface GracefulFailOptions {
   baseUrl?: string;
   /** Request timeout in milliseconds. Defaults to 30000. */
   timeout?: number;
+  /** Whether to auto-retry failed requests with LLM-suggested payload fixes. Defaults to true. */
+  autoRetry?: boolean;
   /** Bring your own LLM API key for error analysis (any OpenAI-compatible key). */
   llmApiKey?: string;
   /** Override the LLM model used for error analysis (e.g. gpt-4o). */

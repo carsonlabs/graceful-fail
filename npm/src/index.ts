@@ -7,6 +7,7 @@ export {
   ProxyError,
 } from "./errors.js";
 export type {
+  AutoFixedEnvelope,
   GracefulFailOptions,
   GracefulFailResponse,
   ErrorAnalysis,

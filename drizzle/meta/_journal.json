@@ -43,6 +43,13 @@
       "when": 1774616294677,
       "tag": "0005_dazzling_doctor_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1774827314495,
+      "tag": "0006_left_gwen_stacy",
+      "breakpoints": true
     }
   ]
 }

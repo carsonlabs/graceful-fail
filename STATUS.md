@@ -1,1 +1,1 @@
-LIVE — selfheal.dev — Self-healing API proxy for AI agents | SDKs: PyPI + npm | Stripe: fix pending (sk_ key)
+LIVE — selfheal.dev — Self-healing API proxy for AI agents | Auto-retry with fixed payload BUILT | Sentry webhook integration BUILT | SDKs: PyPI + npm | Stripe: fix pending (sk_ key) | DB migration pending

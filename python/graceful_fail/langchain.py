@@ -73,7 +73,29 @@ class GracefulFailRequests:
 
     def _format_response(self, resp: Any) -> str:
         """Format a GracefulFailResponse as a string for LangChain agents."""
-        if resp.intercepted:
+        import json
+
+        # Auto-fixed: SelfHeal patched the payload and retried successfully
+        if resp.auto_fixed and resp.error_analysis:
+            ea = resp.error_analysis
+            diff_str = json.dumps({
+                "remove": resp.applied_diff.remove if resp.applied_diff else [],
+                "add": resp.applied_diff.add if resp.applied_diff else {},
+                "modify": resp.applied_diff.modify if resp.applied_diff else {},
+            })
+            data_str = json.dumps(resp.data, indent=2) if isinstance(resp.data, (dict, list)) else str(resp.data)
+            parts = [
+                f"AUTO-FIXED (original error: {ea.error_category})",
+                "SelfHeal automatically corrected the request and retried successfully.",
+                f"What was wrong: {ea.human_readable_explanation}",
+                f"What was changed: {diff_str}",
+                f"Result (HTTP {resp.status_code}):",
+                data_str,
+            ]
+            return "\n".join(parts)
+
+        # Intercepted but not auto-fixed
+        if resp.intercepted and resp.error_analysis:
             ea = resp.error_analysis
             parts = [
                 f"API ERROR (HTTP {resp.status_code}, category: {ea.error_category})",
@@ -89,7 +111,7 @@ class GracefulFailRequests:
             if diff.modify:
                 parts.append(f"Modify fields: {diff.modify}")
             return "\n".join(parts)
-        import json
+
         if isinstance(resp.data, (dict, list)):
             return json.dumps(resp.data, indent=2)
         return str(resp.data)

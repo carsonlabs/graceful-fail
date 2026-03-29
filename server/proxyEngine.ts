@@ -1,10 +1,72 @@
 import type { Request, Response } from "express";
 import { createHash } from "crypto";
 import { getApiKeyByHash, insertRequestLog, touchApiKeyLastUsed, upsertUsageStat, checkRateLimit } from "./db";
-import { analyzeError, detectProvider } from "./llmAnalysis";
+import { analyzeError, detectProvider, type ErrorAnalysis } from "./llmAnalysis";
 import { dispatchWebhook } from "./webhookEngine";
 import { sendSlackAlert } from "./slackAlert";
 import { getSlackIntegration } from "./db";
+
+// ── Auto-Retry Helpers ────────────────────────────────────────────────────────
+
+interface PayloadDiff {
+  remove: string[];
+  add: Record<string, unknown>;
+  modify: Record<string, unknown>;
+}
+
+/** Check whether a payload diff contains any actual changes */
+function hasDiffChanges(diff: PayloadDiff): boolean {
+  return (
+    diff.remove.length > 0 ||
+    Object.keys(diff.add).length > 0 ||
+    Object.keys(diff.modify).length > 0
+  );
+}
+
+/**
+ * Apply a suggested_payload_diff to a cloned request body.
+ * Supports dot-notation keys for nested fields (e.g. "messages.0.role").
+ */
+export function applyPayloadDiff(body: unknown, diff: PayloadDiff): unknown {
+  if (typeof body !== "object" || body === null) return body;
+  const patched = JSON.parse(JSON.stringify(body));
+
+  function setNested(obj: Record<string, unknown>, path: string, value: unknown): void {
+    const parts = path.split(".");
+    let current: Record<string, unknown> = obj;
+    for (let i = 0; i < parts.length - 1; i++) {
+      const key = parts[i]!;
+      if (typeof current[key] !== "object" || current[key] === null) {
+        current[key] = {};
+      }
+      current = current[key] as Record<string, unknown>;
+    }
+    current[parts[parts.length - 1]!] = value;
+  }
+
+  function deleteNested(obj: Record<string, unknown>, path: string): void {
+    const parts = path.split(".");
+    let current: Record<string, unknown> = obj;
+    for (let i = 0; i < parts.length - 1; i++) {
+      const key = parts[i]!;
+      if (typeof current[key] !== "object" || current[key] === null) return;
+      current = current[key] as Record<string, unknown>;
+    }
+    delete current[parts[parts.length - 1]!];
+  }
+
+  for (const key of diff.remove) {
+    deleteNested(patched, key);
+  }
+  for (const [key, value] of Object.entries(diff.add)) {
+    setNested(patched, key, value);
+  }
+  for (const [key, value] of Object.entries(diff.modify)) {
+    setNested(patched, key, value);
+  }
+
+  return patched;
+}
 
 /** Build a SHA-256 hash of the raw API key for DB lookup */
 export function hashApiKey(rawKey: string): string {
@@ -72,6 +134,10 @@ export async function proxyHandler(req: Request, res: Response): Promise<void> {
     };
   })();
 
+  // ── 3b. Auto-retry preference (default: enabled) ────────────────────────
+  const autoRetryHeader = (req.headers["x-auto-retry"] as string | undefined)?.toLowerCase();
+  const autoRetryEnabled = autoRetryHeader !== "false" && autoRetryHeader !== "0";
+
   // ── 4. Validate destination ──────────────────────────────────────────────
   const destinationUrl = req.headers["x-destination-url"] as string | undefined;
   const destinationMethod = (req.headers["x-destination-method"] as string | undefined)?.toUpperCase() ?? "POST";
@@ -112,6 +178,7 @@ export async function proxyHandler(req: Request, res: Response): Promise<void> {
     "x-llm-api-key",    // BYOLLM — never forward to destination
     "x-llm-model",      // BYOLLM
     "x-llm-base-url",   // BYOLLM
+    "x-auto-retry",      // SelfHeal control header
     "authorization",     // strip our own auth key
     "content-length",    // will be recalculated
     "transfer-encoding",
@@ -188,6 +255,53 @@ export async function proxyHandler(req: Request, res: Response): Promise<void> {
       responseBody: destBody,
     }, llmOverrides);
 
+    // ── 8. Auto-retry with fixed payload ──────────────────────────────────
+    const diff = analysis.suggested_payload_diff as PayloadDiff;
+    const shouldRetry =
+      autoRetryEnabled &&
+      analysis.is_retriable &&
+      diff &&
+      hasDiffChanges(diff) &&
+      hasBody;
+
+    let retryStatusCode: number | null = null;
+    let retryBody: unknown = null;
+    let retrySucceeded = false;
+    let retryContentType = "";
+
+    if (shouldRetry) {
+      try {
+        const patchedBody = applyPayloadDiff(req.body, diff);
+        const patchedBodyStr = JSON.stringify(patchedBody);
+
+        const retryHeaders = { ...forwardHeaders };
+        retryHeaders["content-type"] = retryHeaders["content-type"] ?? "application/json";
+        retryHeaders["content-length"] = String(Buffer.byteLength(patchedBodyStr));
+        retryHeaders["x-selfheal-retry"] = "1";
+
+        const retryResponse = await fetch(destinationUrl, {
+          method: destinationMethod,
+          headers: retryHeaders,
+          body: patchedBodyStr,
+        });
+
+        retryStatusCode = retryResponse.status;
+        retryContentType = retryResponse.headers.get("content-type") ?? "";
+        const retryRawText = await retryResponse.text();
+
+        try {
+          retryBody = JSON.parse(retryRawText);
+        } catch {
+          retryBody = retryRawText;
+        }
+
+        retrySucceeded = retryStatusCode >= 200 && retryStatusCode < 400;
+      } catch (retryErr) {
+        console.error("[ProxyEngine] Auto-retry failed:", retryErr);
+        // Retry network error — fall through to return original error
+      }
+    }
+
     const durationMs = Date.now() - start;
     await touchApiKeyLastUsed(apiKey.id);
     await upsertUsageStat(apiKey.id, apiKey.userId, true);
@@ -204,9 +318,35 @@ export async function proxyHandler(req: Request, res: Response): Promise<void> {
       isRetriable: analysis.is_retriable,
       provider: analysis.provider,
       errorCategory: analysis.error_category,
+      wasAutoRetried: shouldRetry,
+      retrySucceeded: shouldRetry ? retrySucceeded : null,
+      retryStatusCode,
     });
 
-    // Fire non-retriable webhook and Slack alert asynchronously
+    // ── 9. Return auto-fixed success ──────────────────────────────────────
+    if (retrySucceeded) {
+      res.status(retryStatusCode!);
+      if (retryContentType) res.setHeader("content-type", retryContentType);
+      res.json({
+        selfheal_auto_fixed: true,
+        data: retryBody,
+        original_error: {
+          status_code: destStatusCode,
+          error_analysis: analysis,
+          raw_response: destBody,
+        },
+        applied_diff: diff,
+        meta: {
+          credits_used: 1,
+          duration_ms: durationMs,
+          tier: apiKey.tier,
+          retry_status_code: retryStatusCode,
+        },
+      });
+      return;
+    }
+
+    // ── 10. Fire alerts for non-retriable errors ──────────────────────────
     if (!analysis.is_retriable) {
       // Slack alert
       getSlackIntegration(apiKey.userId).then((slackConfig) => {
@@ -237,13 +377,22 @@ export async function proxyHandler(req: Request, res: Response): Promise<void> {
       }).catch(() => {});
     }
 
+    // ── 11. Return error envelope (retry failed or not attempted) ─────────
     res.status(destStatusCode).json({
       graceful_fail_intercepted: true,
+      selfheal_auto_fixed: false,
       original_status_code: destStatusCode,
       destination_url: destinationUrl,
       detected_provider: analysis.provider ?? "other",
       error_analysis: analysis,
       raw_destination_response: destBody,
+      ...(shouldRetry && retryStatusCode !== null
+        ? {
+            retry_attempted: true,
+            retry_status_code: retryStatusCode,
+            retry_response: retryBody,
+          }
+        : {}),
       meta: {
         credits_used: 1,
         duration_ms: durationMs,

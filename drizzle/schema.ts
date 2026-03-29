@@ -83,6 +83,14 @@ export const requestLogs = mysqlTable("request_logs", {
   provider: varchar("provider", { length: 32 }),
   /** Error category from LLM analysis */
   errorCategory: varchar("errorCategory", { length: 32 }),
+  /** Whether an auto-retry with fixed payload was attempted */
+  wasAutoRetried: boolean("wasAutoRetried").default(false),
+  /** Whether the auto-retry returned a 2xx success */
+  retrySucceeded: boolean("retrySucceeded"),
+  /** HTTP status code of the retry attempt (null if not retried) */
+  retryStatusCode: int("retryStatusCode"),
+  /** Source of the error: proxy (default), sentry, or future integrations */
+  source: varchar("source", { length: 32 }).default("proxy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -207,3 +215,21 @@ export const slackIntegrations = mysqlTable("slack_integrations", {
 
 export type SlackIntegration = typeof slackIntegrations.$inferSelect;
 export type InsertSlackIntegration = typeof slackIntegrations.$inferInsert;
+
+// --- Sentry Integration ---
+
+export const sentryIntegrations = mysqlTable("sentry_integrations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  /** HMAC-SHA256 secret for verifying inbound Sentry webhooks */
+  webhookSecret: varchar("webhookSecret", { length: 64 }).notNull(),
+  /** Optional Sentry project slug for filtering */
+  projectSlug: varchar("projectSlug", { length: 128 }),
+  /** Whether to process incoming Sentry events */
+  enabled: boolean("enabled").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SentryIntegration = typeof sentryIntegrations.$inferSelect;
+export type InsertSentryIntegration = typeof sentryIntegrations.$inferInsert;

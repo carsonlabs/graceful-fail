@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { proxyHandler } from "../proxyEngine";
+import { sentryWebhookHandler } from "../sentryWebhook";
 import { registerStripeWebhook } from "../stripeRouter";
 import { buildOpenApiSpec } from "../openApiSpec";
 
@@ -44,6 +45,9 @@ async function startServer() {
 
   // SelfHeal proxy endpoint — raw Express route (needs raw body access)
   app.post("/api/proxy", proxyHandler);
+
+  // Sentry inbound webhook — receives events from Sentry
+  app.post("/api/webhooks/sentry", sentryWebhookHandler);
 
   // Badge — public, cacheable
   app.get("/badge.svg", (_req, res) => {

@@ -141,8 +141,10 @@ export interface ErrorAnalysis {
   provider?: ApiProvider;
 }
 
-const BASE_SYSTEM_PROMPT = `You are an expert API debugging assistant for autonomous AI agents. 
+const BASE_SYSTEM_PROMPT = `You are an expert API debugging assistant for autonomous AI agents.
 Your job is to analyze a failed HTTP request and provide exact, actionable instructions so the agent can fix its payload and retry successfully.
+
+CRITICAL: The suggested_payload_diff you return will be applied AUTOMATICALLY to the request body and retried. Your diff values must be exact, valid JSON values — not descriptions. The system will call JSON.parse on your values and patch the payload directly.
 
 Rules:
 - Be precise and direct. Your output is consumed by an AI agent, not a human.
@@ -150,7 +152,12 @@ Rules:
 - For 4xx errors (except 429), set is_retriable to true only if the payload can be fixed.
 - For 401/403, set is_retriable to false — these require credential changes outside the agent's scope.
 - In actionable_fix_for_agent, write a direct command (e.g., "Change the 'status' field value from string 'active' to integer 1").
-- In suggested_payload_diff, list field names to remove, add, or modify.
+- In suggested_payload_diff, provide EXACT values that should be used:
+  - "remove": field names to delete from the payload (e.g., ["unsupported_field"])
+  - "add": fields to add with their exact values (e.g., {"max_tokens": 1024} not {"max_tokens": "set to 1024"})
+  - "modify": fields to change with their exact new values (e.g., {"model": "gpt-4o-mini"} not {"model": "change to gpt-4o-mini"})
+  - Use dot notation for nested fields (e.g., "messages.0.role")
+  - Values must be the actual JSON type needed (string, number, boolean, object, array) — never a description
 - Classify the error_category accurately.
 - NEVER reference or repeat any Authorization, API key, or credential values from the request.`;
 
@@ -202,8 +209,8 @@ Analyze this failure and return your diagnosis as JSON.`;
                 type: "object",
                 properties: {
                   remove: { type: "array", items: { type: "string" }, description: "Field names to remove from payload" },
-                  add: { type: "object", additionalProperties: { type: "string" }, description: "Fields to add with their expected types/values" },
-                  modify: { type: "object", additionalProperties: { type: "string" }, description: "Fields to modify with new expected values" },
+                  add: { type: "object", additionalProperties: true, description: "Fields to add with their exact JSON values (not descriptions)" },
+                  modify: { type: "object", additionalProperties: true, description: "Fields to modify with their exact new JSON values (not descriptions)" },
                 },
                 required: ["remove", "add", "modify"],
                 additionalProperties: false,

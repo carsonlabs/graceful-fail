@@ -1,5 +1,6 @@
 import { AuthenticationError, ProxyError, RateLimitError } from "./errors.js";
 import type {
+  AutoFixedEnvelope,
   GracefulFailOptions,
   GracefulFailResponse,
   InterceptedEnvelope,
@@ -22,13 +23,21 @@ const DEFAULT_TIMEOUT = 30_000;
  *
  * const gf = new GracefulFail({ apiKey: "gf_your_key" });
  *
- * const resp = await gf.post("https://api.example.com/users", {
- *   json: { name: "Alice" },
+ * const resp = await gf.post("https://api.openai.com/v1/chat/completions", {
+ *   json: { model: "gpt-4o-mini", messages: [{ role: "user", content: "Hi" }] },
+ *   headers: { Authorization: "Bearer sk-..." },
  * });
  *
- * if (resp.intercepted) {
+ * if (resp.autoFixed) {
+ *   // SelfHeal detected an error, fixed the payload, and retried successfully
+ *   console.log("Auto-fixed!", resp.data);
+ *   console.log("What was wrong:", resp.errorAnalysis!.human_readable_explanation);
+ *   console.log("What was changed:", resp.appliedDiff);
+ * } else if (resp.intercepted) {
+ *   // Error detected but couldn't be auto-fixed (e.g. auth error)
  *   console.log(resp.errorAnalysis!.actionable_fix_for_agent);
  * } else {
+ *   // Success — passed through transparently
  *   console.log(resp.data);
  * }
  * ```
@@ -37,6 +46,7 @@ export class GracefulFail {
   private apiKey: string;
   private baseUrl: string;
   private timeout: number;
+  private autoRetry: boolean;
   private llmHeaders: Record<string, string>;
 
   constructor(options: GracefulFailOptions) {
@@ -46,6 +56,7 @@ export class GracefulFail {
     this.apiKey = options.apiKey;
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
     this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
+    this.autoRetry = options.autoRetry ?? true;
     this.llmHeaders = {};
     if (options.llmApiKey) this.llmHeaders["X-LLM-API-Key"] = options.llmApiKey;
     if (options.llmModel) this.llmHeaders["X-LLM-Model"] = options.llmModel;
@@ -64,6 +75,7 @@ export class GracefulFail {
       Authorization: `Bearer ${this.apiKey}`,
       "X-Destination-URL": url,
       "X-Destination-Method": method.toUpperCase(),
+      "X-Auto-Retry": this.autoRetry ? "true" : "false",
       ...this.llmHeaders,
     };
 
@@ -119,6 +131,28 @@ export class GracefulFail {
 
     const body = await response.json();
 
+    // Auto-fixed: SelfHeal patched the payload and the retry succeeded
+    if (
+      typeof body === "object" &&
+      body !== null &&
+      "selfheal_auto_fixed" in body &&
+      body.selfheal_auto_fixed === true
+    ) {
+      const envelope = body as AutoFixedEnvelope;
+      return {
+        statusCode: envelope.meta.retry_status_code,
+        intercepted: true,
+        autoFixed: true,
+        data: envelope.data as T,
+        errorAnalysis: envelope.original_error.error_analysis,
+        rawResponse: envelope.original_error.raw_response,
+        appliedDiff: envelope.applied_diff,
+        creditsUsed: envelope.meta?.credits_used ?? 1,
+        durationMs: envelope.meta?.duration_ms ?? 0,
+      };
+    }
+
+    // Intercepted but not auto-fixed (retry failed or not attempted)
     if (
       typeof body === "object" &&
       body !== null &&
@@ -129,6 +163,7 @@ export class GracefulFail {
       return {
         statusCode: envelope.original_status_code,
         intercepted: true,
+        autoFixed: false,
         data: body as T,
         errorAnalysis: envelope.error_analysis,
         rawResponse: envelope.raw_destination_response,
@@ -137,9 +172,11 @@ export class GracefulFail {
       };
     }
 
+    // Pass-through success
     return {
       statusCode: response.status,
       intercepted: false,
+      autoFixed: false,
       data: body as T,
       creditsUsed: 0,
       durationMs: 0,

@@ -25,9 +25,21 @@ const TYPE_CONFIG: Record<ChangeType, { label: string; color: string; icon: Reac
 
 const RELEASES: Release[] = [
   {
+    version: "1.5.0",
+    date: "March 29, 2026",
+    tag: "latest",
+    summary: "Dashboard UX overhaul: clickable request logs with drill-down detail view, analytics fixes, and quality-of-life improvements.",
+    changes: [
+      { type: "feature", text: "Request log drill-down — click any row to expand full request details, LLM analysis, error category, and retriable status" },
+      { type: "fix", text: "Analytics date grouping — monthly chart and table now correctly aggregate across all API keys instead of showing duplicate rows" },
+      { type: "fix", text: "Status page stat cards no longer show dashes when value is zero — displays \"0\" for counts and \"N/A\" for latencies with no data" },
+      { type: "improvement", text: "Copy-to-clipboard button on Dashboard Quick Start code block with auto-populated API key prefix" },
+      { type: "improvement", text: "Renamed \"Success Rate\" to \"Pass-through Rate\" across Dashboard and Analytics for clarity" },
+    ],
+  },
+  {
     version: "1.4.0",
     date: "March 26, 2026",
-    tag: "latest",
     summary: "Developer experience round: changelog, onboarding checklist, and CSV log export.",
     changes: [
       { type: "feature", text: "Public /changelog page with version history and release notes" },

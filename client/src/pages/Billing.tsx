@@ -189,9 +189,6 @@ export default function Billing() {
           })}
         </div>
 
-        <p className="text-xs text-muted-foreground text-center mt-6">
-          Test payments: use card <code className="font-mono bg-muted px-1 rounded">4242 4242 4242 4242</code> with any future expiry and CVC.
-        </p>
       </div>
     </AppLayout>
   );

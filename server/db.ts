@@ -110,6 +110,15 @@ export async function revokeApiKey(id: number, userId: number) {
     .where(and(eq(apiKeys.id, id), eq(apiKeys.userId, userId)));
 }
 
+export async function renameApiKey(id: number, userId: number, name: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db
+    .update(apiKeys)
+    .set({ name })
+    .where(and(eq(apiKeys.id, id), eq(apiKeys.userId, userId)));
+}
+
 export async function touchApiKeyLastUsed(id: number) {
   const db = await getDb();
   if (!db) return;

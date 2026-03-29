@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Key, Plus, Copy, Trash2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Key, Plus, Copy, Trash2, AlertTriangle, CheckCircle2, Pencil, Check, X } from "lucide-react";
 
 type Tier = "hobby" | "pro" | "agency";
 
@@ -36,12 +36,21 @@ export default function ApiKeys() {
       toast.success("API key revoked");
     },
   });
+  const renameMutation = trpc.apiKeys.rename.useMutation({
+    onSuccess: () => {
+      utils.apiKeys.list.invalidate();
+      setEditingId(null);
+      toast.success("Key renamed");
+    },
+  });
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [tier, setTier] = useState<Tier>("hobby");
   const [newKey, setNewKey] = useState<string | null>(null);
   const [revokeId, setRevokeId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
 
   const handleCreate = async () => {
     if (!name.trim()) return toast.error("Please enter a key name");
@@ -200,7 +209,49 @@ export default function ApiKeys() {
                         <Key className="w-4 h-4 text-primary" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground">{key.name}</p>
+                        {editingId === key.id ? (
+                          <div className="flex items-center gap-1.5">
+                            <Input
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                              className="h-7 text-sm bg-background border-border w-48"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && editName.trim()) {
+                                  renameMutation.mutate({ id: key.id, name: editName.trim() });
+                                } else if (e.key === "Escape") {
+                                  setEditingId(null);
+                                }
+                              }}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-emerald-400"
+                              onClick={() => editName.trim() && renameMutation.mutate({ id: key.id, name: editName.trim() })}
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-muted-foreground"
+                              onClick={() => setEditingId(null)}
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 group">
+                            <p className="text-sm font-medium text-foreground">{key.name}</p>
+                            <button
+                              onClick={() => { setEditingId(key.id); setEditName(key.name); }}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
                         <p className="text-xs text-muted-foreground font-mono mt-0.5">
                           {key.keyPrefix}••••••••••••••••
                         </p>
@@ -251,8 +302,8 @@ export default function ApiKeys() {
         <Card className="bg-card border-border mt-6">
           <CardContent className="px-5 py-5">
             <h3 className="text-sm font-semibold mb-3">How to use your key</h3>
-            <pre className="text-xs font-mono text-foreground/80 bg-background rounded-lg border border-border p-4 overflow-x-auto whitespace-pre">{`curl -X POST https://your-app.com/api/proxy \\
-  -H "Authorization: Bearer gf_your_key_here" \\
+            <pre className="text-xs font-mono text-foreground/80 bg-background rounded-lg border border-border p-4 overflow-x-auto whitespace-pre">{`curl -X POST https://selfheal.dev/api/proxy \\
+  -H "Authorization: Bearer ${keys?.[0]?.keyPrefix ? `${keys[0].keyPrefix}••••••••` : "gf_your_key_here"}" \\
   -H "X-Destination-URL: https://api.example.com/endpoint" \\
   -H "X-Destination-Method: POST" \\
   -H "Content-Type: application/json" \\

@@ -14,6 +14,7 @@ import {
   getRequestLogCount,
   getUsageStatsByUserId,
   revokeApiKey,
+  renameApiKey,
   getPublicStatus,
   getOnboardingStatus,
   dismissOnboarding,
@@ -56,6 +57,13 @@ const apiKeysRouter = router({
       });
       // Return the raw key ONCE — it will never be shown again
       return { rawKey: raw, prefix, name: input.name, tier: input.tier };
+    }),
+
+  rename: protectedProcedure
+    .input(z.object({ id: z.number(), name: z.string().min(1).max(128) }))
+    .mutation(async ({ ctx, input }) => {
+      await renameApiKey(input.id, ctx.user.id, input.name);
+      return { success: true };
     }),
 
   revoke: protectedProcedure

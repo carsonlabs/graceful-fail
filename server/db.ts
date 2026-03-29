@@ -196,10 +196,17 @@ export async function upsertUsageStat(
 export async function getUsageStatsByUserId(userId: number) {
   const db = await getDb();
   if (!db) return [];
+  // Aggregate across all API keys for the same month
   return db
-    .select()
+    .select({
+      month: usageStats.month,
+      totalRequests: sql<number>`COALESCE(SUM(${usageStats.totalRequests}), 0)`,
+      interceptedRequests: sql<number>`COALESCE(SUM(${usageStats.interceptedRequests}), 0)`,
+      creditsUsed: sql<number>`COALESCE(SUM(${usageStats.creditsUsed}), 0)`,
+    })
     .from(usageStats)
     .where(eq(usageStats.userId, userId))
+    .groupBy(usageStats.month)
     .orderBy(desc(usageStats.month));
 }
 

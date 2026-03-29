@@ -65,7 +65,7 @@ export default function UsageAnalytics() {
               bg: "bg-primary/10",
             },
             {
-              label: "Success Rate",
+              label: "Pass-through Rate",
               value: `${stats?.successRate ?? 100}%`,
               icon: CheckCircle2,
               color: "text-emerald-400",
@@ -157,7 +157,7 @@ export default function UsageAnalytics() {
                   <div>Total Requests</div>
                   <div>Intercepted</div>
                   <div>Credits Used</div>
-                  <div>Success Rate</div>
+                  <div>Pass-through Rate</div>
                 </div>
                 {usageHistory.map((row) => {
                   const successRate =
@@ -166,7 +166,7 @@ export default function UsageAnalytics() {
                       : 100;
                   return (
                     <div
-                      key={row.id}
+                      key={row.month}
                       className="grid grid-cols-5 gap-2 px-5 py-3 border-b border-border last:border-0 text-sm hover:bg-muted/10 transition-colors"
                     >
                       <div className="text-foreground font-mono text-xs">{row.month}</div>

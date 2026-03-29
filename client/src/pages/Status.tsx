@@ -184,23 +184,23 @@ export default function StatusPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <MetricCard
               label="Total Requests"
-              value={isLoading ? null : (data?.totalRequests24h ? data.totalRequests24h.toLocaleString() : "—")}
+              value={isLoading ? null : (data?.totalRequests24h ?? 0).toLocaleString()}
               sub="Proxied in the last 24h"
             />
             <MetricCard
               label="Intercepted Errors"
-              value={isLoading ? null : (data?.interceptedRequests24h ? data.interceptedRequests24h.toLocaleString() : "—")}
+              value={isLoading ? null : (data?.interceptedRequests24h ?? 0).toLocaleString()}
               sub="4xx/5xx responses analyzed"
             />
             <MetricCard
               label="Avg Proxy Latency"
-              value={isLoading ? null : (data?.avgProxyLatencyMs ?? null)}
+              value={isLoading ? null : (data?.avgProxyLatencyMs != null ? data.avgProxyLatencyMs : "N/A")}
               unit={data?.avgProxyLatencyMs != null ? "ms" : undefined}
               sub="End-to-end round trip"
             />
             <MetricCard
               label="Avg LLM Analysis"
-              value={isLoading ? null : (data?.avgLlmLatencyMs ?? null)}
+              value={isLoading ? null : (data?.avgLlmLatencyMs != null ? data.avgLlmLatencyMs : "N/A")}
               unit={data?.avgLlmLatencyMs != null ? "ms" : undefined}
               sub="Error interpretation time"
             />

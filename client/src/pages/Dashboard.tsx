@@ -1,7 +1,8 @@
+import { useState } from "react";
 import AppLayout from "@/components/AppLayout";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart2, Zap, AlertTriangle, CheckCircle2, Key, ArrowRight, X, FlaskConical, Webhook, CreditCard } from "lucide-react";
+import { BarChart2, Zap, AlertTriangle, CheckCircle2, Key, ArrowRight, X, FlaskConical, Webhook, CreditCard, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 
@@ -78,10 +79,10 @@ export default function Dashboard() {
       bg: "bg-primary/10",
     },
     {
-      title: "Success Rate",
+      title: "Pass-through Rate",
       value: `${stats?.successRate ?? 100}%`,
       icon: CheckCircle2,
-      description: "Pass-through requests",
+      description: "Requests forwarded without errors",
       color: "text-emerald-400",
       bg: "bg-emerald-500/10",
     },
@@ -287,26 +288,59 @@ export default function Dashboard() {
         )}
 
         {/* Quick start guide */}
+        <QuickStartCard apiKeyPrefix={keysData?.[0]?.keyPrefix} />
+      </div>
+    </AppLayout>
+  );
+}
+
+function QuickStartCard({ apiKeyPrefix }: { apiKeyPrefix?: string }) {
+  const [copied, setCopied] = useState(false);
+  const keyPlaceholder = apiKeyPrefix ? `${apiKeyPrefix}••••••••` : "gf_your_key_here";
+  const codeSnippet = `POST /api/proxy
+Authorization: Bearer ${keyPlaceholder}
+X-Destination-URL: https://api.yourservice.com/endpoint
+X-Destination-Method: POST
+Content-Type: application/json
+
+{ "your": "payload" }`;
+
+  function handleCopy() {
+    navigator.clipboard.writeText(codeSnippet).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
         <Card className="bg-card border-border mt-6">
-          <CardHeader className="px-5 pt-5 pb-3">
+          <CardHeader className="px-5 pt-5 pb-3 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-semibold">Quick Start</CardTitle>
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-400">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  Copy
+                </>
+              )}
+            </button>
           </CardHeader>
           <CardContent className="px-5 pb-5">
             <div className="rounded-lg bg-background border border-border p-4">
               <p className="text-xs text-muted-foreground mb-3 font-mono">
                 # Route your agent's API calls through SelfHeal
               </p>
-              <pre className="text-xs font-mono text-foreground/90 overflow-x-auto whitespace-pre">{`POST /api/proxy
-Authorization: Bearer gf_your_key_here
-X-Destination-URL: https://api.yourservice.com/endpoint
-X-Destination-Method: POST
-Content-Type: application/json
-
-{ "your": "payload" }`}</pre>
+              <pre className="text-xs font-mono text-foreground/90 overflow-x-auto whitespace-pre">{codeSnippet}</pre>
             </div>
           </CardContent>
         </Card>
-      </div>
-    </AppLayout>
   );
 }

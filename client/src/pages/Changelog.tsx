@@ -25,9 +25,19 @@ const TYPE_CONFIG: Record<ChangeType, { label: string; color: string; icon: Reac
 
 const RELEASES: Release[] = [
   {
-    version: "1.5.0",
+    version: "1.5.1",
     date: "March 29, 2026",
     tag: "latest",
+    summary: "API key management and polish: inline rename, auto-populated code snippets, and billing cleanup.",
+    changes: [
+      { type: "feature", text: "Inline API key rename — hover any key name to edit it in place (Enter to save, Escape to cancel)" },
+      { type: "improvement", text: "API Keys and Dashboard code snippets now auto-populate with your actual API key prefix" },
+      { type: "improvement", text: "Removed test payment card notice from Billing page" },
+    ],
+  },
+  {
+    version: "1.5.0",
+    date: "March 29, 2026",
     summary: "Dashboard UX overhaul: clickable request logs with drill-down detail view, analytics fixes, and quality-of-life improvements.",
     changes: [
       { type: "feature", text: "Request log drill-down — click any row to expand full request details, LLM analysis, error category, and retriable status" },

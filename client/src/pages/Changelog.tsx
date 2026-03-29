@@ -79,7 +79,7 @@ const RELEASES: Release[] = [
       { type: "feature", text: "Zero-overhead pass-through for 2xx/3xx responses" },
       { type: "feature", text: "LLM-powered error analysis for 4xx/5xx — returns is_retriable, actionable_fix_for_agent, and suggested_payload_diff" },
       { type: "feature", text: "API key authentication with SHA-256 hashing — keys shown only once at creation" },
-      { type: "feature", text: "Three-tier rate limiting: Hobby (500/mo), Pro (10k/mo), Agency (100k/mo)" },
+      { type: "feature", text: "Three-tier rate limiting: Hobby (500/mo), Pro (10k/mo), Agency (50k/mo)" },
       { type: "feature", text: "Credits only consumed on intercepted errors — pass-through requests are free" },
       { type: "feature", text: "Developer dashboard: overview stats, API key management, request logs, usage analytics" },
       { type: "security", text: "Sensitive headers (Authorization, Cookie, API keys) stripped before LLM analysis" },

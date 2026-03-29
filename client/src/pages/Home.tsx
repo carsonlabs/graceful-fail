@@ -117,14 +117,14 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
       <header className="border-b border-border sticky top-0 z-50 bg-background/80 backdrop-blur-sm">
-        <div className="container flex items-center justify-between h-16">
-          <div className="flex items-center gap-2">
+        <div className="container flex items-center justify-between h-16 gap-8">
+          <div className="flex items-center gap-2 shrink-0">
             <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
               <Zap className="w-4 h-4 text-primary-foreground" />
             </div>
             <span className="font-semibold text-sm tracking-tight">SelfHeal</span>
           </div>
-          <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
+          <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground whitespace-nowrap">
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
             <a href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</a>
             <a href="#sdks" className="hover:text-foreground transition-colors">SDKs</a>
@@ -211,7 +211,7 @@ export default function Home() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
               { value: "< 200ms", label: "Avg. analysis latency" },
-              { value: "0", label: "Credentials leaked to LLM" },
+              { value: "Zero", label: "Credentials exposed — by design" },
               { value: "100%", label: "Pass-through transparency" },
               { value: "Free", label: "On successful requests" },
             ].map(({ value, label }) => (
@@ -254,9 +254,9 @@ export default function Home() {
       <section id="how-it-works" className="py-24 bg-card/30 border-y border-border">
         <div className="container">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">One line of code to add</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Drop-in integration</h2>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              Replace your destination URL with the SelfHeal proxy endpoint. That's it.
+              Point your requests at the SelfHeal proxy, add a few headers, and you're live.
             </p>
           </div>
           <div className="max-w-3xl mx-auto">
@@ -402,10 +402,11 @@ if (resp.intercepted)
       <section className="py-24 border-t border-border">
         <div className="container text-center max-w-2xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Your agents deserve better error handling
+            It's 3 AM. Your agent just hit a 422.<br className="hidden sm:block" />
+            Does it crash — or fix itself?
           </h2>
           <p className="text-muted-foreground text-lg mb-8">
-            Join developers building resilient AI workflows. Start free, scale as you grow.
+            Stop babysitting your AI workflows. SelfHeal gives your agents the intelligence to recover on their own.
           </p>
           <Button
             size="lg"

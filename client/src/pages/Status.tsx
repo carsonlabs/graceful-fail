@@ -184,12 +184,12 @@ export default function StatusPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <MetricCard
               label="Total Requests"
-              value={isLoading ? null : (data?.totalRequests24h ?? 0).toLocaleString()}
+              value={isLoading ? null : (data?.totalRequests24h ? data.totalRequests24h.toLocaleString() : "—")}
               sub="Proxied in the last 24h"
             />
             <MetricCard
               label="Intercepted Errors"
-              value={isLoading ? null : (data?.interceptedRequests24h ?? 0).toLocaleString()}
+              value={isLoading ? null : (data?.interceptedRequests24h ? data.interceptedRequests24h.toLocaleString() : "—")}
               sub="4xx/5xx responses analyzed"
             />
             <MetricCard

@@ -9,11 +9,12 @@
 
 ---
 
-## What is Graceful Fail?
+Your agent hits a `422`. It has no idea why. It retries the same broken payload five times, burns through your token budget, and crashes. You get a Slack alert at 2am.
 
-Graceful Fail is an intelligent API proxy that sits between your AI agent and any third-party API. When an API call succeeds, the response passes through transparently. When it fails, the proxy intercepts the error, analyzes it with an LLM, and returns structured fix instructions your agent can act on immediately.
+Graceful Fail is an API proxy that intercepts failed requests, analyzes them with an LLM, and returns structured fix instructions your agent can act on immediately. Successful calls pass through untouched. Failed calls come back with an explanation and a fix.
 
-Instead of your agent crashing on a `422` or retrying a `503` blindly, it gets back a machine-readable envelope:
+<!-- TODO: Add demo GIF or architecture diagram here -->
+![Demo](docs/demo.gif)
 
 ```json
 {
@@ -100,52 +101,20 @@ Both SDKs include framework integrations:
 
 ## Features
 
-**Proxy Engine**
-- Single endpoint: `POST /api/proxy`
-- Zero-overhead pass-through on 2xx/3xx responses
-- LLM-powered analysis on 4xx/5xx errors with structured JSON envelope
-- Provider-aware analysis for OpenAI and Anthropic APIs (rate limits, context length, auth errors)
-- SSRF protection blocks requests to internal/loopback addresses
+- **Zero-overhead pass-through** -- 2xx/3xx responses returned verbatim, no credits consumed
+- **LLM-powered error analysis** -- structured JSON envelope with fix instructions, payload diffs, and error categories
+- **Provider-aware** -- specialized handling for OpenAI and Anthropic API errors (rate limits, context length, auth)
+- **Sensitive data stripped** -- Authorization headers, cookies, and API keys never reach the LLM
+- **Webhooks & Slack alerts** -- get notified on rate limits, non-retriable errors, and critical failures
+- **Dashboard** -- API key management, request logs with filters, usage analytics, CSV export
+- **Weekly digest emails** -- top failing APIs and usage summary delivered to your inbox
+- **OpenAPI 3.1 spec** -- import into Postman, Insomnia, or any OpenAPI client
 
-**Security**
-- Sensitive headers (Authorization, Cookie, API keys) stripped before LLM analysis
-- API keys stored as SHA-256 hashes
-- HMAC-SHA256 signed webhook deliveries
-
-**Dashboard**
-- API key management (create, revoke, rotate)
-- Request log viewer with filters (status, date, intercepted only)
-- Usage analytics per key with monthly breakdown
-- CSV export of request logs
-- Onboarding checklist for new users
-
-**Integrations**
-- Webhook notifications on rate limit and non-retriable error events
-- Slack alerts with Block Kit messages on critical failures
-- Weekly digest email with top failing APIs and usage summary
-
-**Developer Tools**
-- Live API playground with diff viewer and shareable links
-- Copy-as-cURL from playground
-- OpenAPI 3.1 spec at `/api/openapi.json`
-- Public docs page with code snippets in curl, Python, Node.js, and TypeScript
-- Public status page with latency metrics and API failure leaderboard
-- Changelog
-
-**Billing**
-- Stripe-powered subscriptions with webhook sync
-- Referral system with bonus credits for both parties
-- Credits consumed only on intercepted (failed) requests
+[Full feature list &rarr; selfheal.dev/docs](https://selfheal.dev/docs)
 
 ## Pricing
 
-| Plan | Price | Requests/month | Extras |
-|------|-------|----------------|--------|
-| **Hobby** | Free | 500 | API key management, request logs (7 days) |
-| **Pro** | $29/mo | 10,000 | Multiple API keys, 30-day logs, usage analytics |
-| **Agency** | $99/mo | 50,000 | Unlimited API keys, 90-day logs, $0.005/extra request |
-
-Successful pass-through requests are always free. Credits are only consumed when the LLM is invoked on a failed request.
+See [Pricing](https://selfheal.dev/#pricing) for plan details. Free tier includes 500 requests/month.
 
 ## API Reference
 

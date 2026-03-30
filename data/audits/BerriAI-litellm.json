@@ -1,0 +1,48 @@
+{
+  "name": "LiteLLM",
+  "slug": "BerriAI-litellm",
+  "repos": [
+    {
+      "repo": "litellm",
+      "fullName": "BerriAI/litellm",
+      "stars": 41552,
+      "language": "Python",
+      "description": "Python SDK, Proxy Server (AI Gateway) to call 100+ LLM APIs in OpenAI (or native) format, with cost tracking, guardrails, loadbalancing and logging. [Bedrock, Azure, OpenAI, VertexAI, Cohere, Anthropic, Sagemaker, HuggingFace, VLLM, NVIDIA NIM]",
+      "sdksFound": [
+        "OpenAI SDK"
+      ],
+      "antipatterns": [
+        {
+          "name": "Unprotected HTTP call (no retry)",
+          "description": "External API call with no retry/backoff — one transient failure kills the workflow",
+          "severity": "High",
+          "count": 2,
+          "exampleFile": "cookbook/misc/openai_timeouts.py",
+          "exampleLine": "return client.chat.completions.create("
+        },
+        {
+          "name": "Hardcoded single model",
+          "description": "Locked to one LLM model with no fallback — outage = total downtime",
+          "severity": "Medium",
+          "count": 1,
+          "exampleFile": "cookbook/misc/openai_timeouts.py",
+          "exampleLine": "model=\"gpt-3.5-turbo\","
+        }
+      ],
+      "filesScanned": 4,
+      "aiFilesFound": 1,
+      "resilienceScore": 67
+    }
+  ],
+  "totalStars": 41552,
+  "totalAIFiles": 1,
+  "sdksUsed": [
+    "OpenAI SDK"
+  ],
+  "totalHighSeverity": 2,
+  "totalMediumSeverity": 1,
+  "totalLowSeverity": 0,
+  "overallScore": 67,
+  "estimatedFailureRate": "3-8%",
+  "estimatedCostPerMonth": "$200-$800"
+}

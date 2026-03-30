@@ -21,6 +21,7 @@ import DigestSettings from "./pages/DigestSettings";
 import SentryIntegration from "./pages/SentryIntegration";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import AuditReport from "./pages/AuditReport";
 
 function Router() {
   return (
@@ -42,6 +43,7 @@ function Router() {
       <Route path="/dashboard/digest" component={DigestSettings} />
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
+      <Route path="/audit/:slug" component={AuditReport} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

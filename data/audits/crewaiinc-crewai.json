@@ -1,0 +1,33 @@
+{
+  "name": "CrewAI",
+  "slug": "crewaiinc-crewai",
+  "repos": [
+    {
+      "repo": "crewAI",
+      "fullName": "crewAIInc/crewAI",
+      "stars": 47594,
+      "language": "Python",
+      "description": "Framework for orchestrating role-playing, autonomous AI agents. By fostering collaborative intelligence, CrewAI empowers agents to work together seamlessly, tackling complex tasks.",
+      "sdksFound": [
+        "CrewAI",
+        "OpenAI SDK"
+      ],
+      "antipatterns": [],
+      "filesScanned": 9,
+      "aiFilesFound": 7,
+      "resilienceScore": 100
+    }
+  ],
+  "totalStars": 47594,
+  "totalAIFiles": 7,
+  "sdksUsed": [
+    "CrewAI",
+    "OpenAI SDK"
+  ],
+  "totalHighSeverity": 0,
+  "totalMediumSeverity": 0,
+  "totalLowSeverity": 0,
+  "overallScore": 100,
+  "estimatedFailureRate": "1-3%",
+  "estimatedCostPerMonth": "$50-$200"
+}

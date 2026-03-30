@@ -1,0 +1,92 @@
+{
+  "name": "Phidata",
+  "slug": "phidatahq-phidata",
+  "repos": [
+    {
+      "repo": "agno",
+      "fullName": "agno-agi/agno",
+      "stars": 39037,
+      "language": "Python",
+      "description": "Build, run, manage agentic software at scale.",
+      "sdksFound": [
+        "OpenAI SDK",
+        "Anthropic SDK",
+        "LangChain",
+        "CrewAI",
+        "AutoGen",
+        "LlamaIndex",
+        "Requests/httpx (Python HTTP)"
+      ],
+      "antipatterns": [
+        {
+          "name": "Unprotected HTTP call (no retry)",
+          "description": "External API call with no retry/backoff — one transient failure kills the workflow",
+          "severity": "High",
+          "count": 10,
+          "exampleFile": "libs/agno/agno/tools/openai.py",
+          "exampleLine": ""
+        },
+        {
+          "name": "Bare except / empty catch",
+          "description": "Swallows all errors silently — agent has no idea something failed",
+          "severity": "High",
+          "count": 6,
+          "exampleFile": "libs/agno/agno/models/azure/openai_chat.py",
+          "exampleLine": "except Exception:"
+        },
+        {
+          "name": "Hardcoded single model",
+          "description": "Locked to one LLM model with no fallback — outage = total downtime",
+          "severity": "Medium",
+          "count": 3,
+          "exampleFile": "cookbook/91_tools/models/openai_tools.py",
+          "exampleLine": "tools=[OpenAITools(transcription_model=\"gpt-4o-transcribe\")],"
+        },
+        {
+          "name": "Raw status code check only",
+          "description": "Checks HTTP status but doesn't parse error body — agent gets no context on what went wrong",
+          "severity": "Medium",
+          "count": 1,
+          "exampleFile": "cookbook/07_knowledge/09_archive/vector_dbs/llamaindex_db.py",
+          "exampleLine": "if response.status_code == 200:"
+        },
+        {
+          "name": "No timeout on HTTP calls",
+          "description": "HTTP calls without timeout — agent hangs indefinitely on slow responses",
+          "severity": "Medium",
+          "count": 1,
+          "exampleFile": "cookbook/07_knowledge/09_archive/vector_dbs/llamaindex_db.py",
+          "exampleLine": "response = httpx.get(source_url)"
+        },
+        {
+          "name": "No structured error response",
+          "description": "API errors returned as plain strings instead of structured JSON — agents can't parse recovery steps",
+          "severity": "Low",
+          "count": 1,
+          "exampleFile": "cookbook/91_tools/models/azure_openai_tools.py",
+          "exampleLine": "print(\"Error: Missing base Azure OpenAI requirements.\")"
+        }
+      ],
+      "filesScanned": 45,
+      "aiFilesFound": 26,
+      "resilienceScore": 33
+    }
+  ],
+  "totalStars": 39037,
+  "totalAIFiles": 26,
+  "sdksUsed": [
+    "OpenAI SDK",
+    "Anthropic SDK",
+    "LangChain",
+    "CrewAI",
+    "AutoGen",
+    "LlamaIndex",
+    "Requests/httpx (Python HTTP)"
+  ],
+  "totalHighSeverity": 16,
+  "totalMediumSeverity": 5,
+  "totalLowSeverity": 1,
+  "overallScore": 33,
+  "estimatedFailureRate": "15-25%",
+  "estimatedCostPerMonth": "$2,000-$8,000"
+}

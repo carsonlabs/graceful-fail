@@ -1,0 +1,31 @@
+{
+  "name": "Pydantic AI",
+  "slug": "pydantic-pydantic-ai",
+  "repos": [
+    {
+      "repo": "pydantic-ai",
+      "fullName": "pydantic/pydantic-ai",
+      "stars": 15949,
+      "language": "Python",
+      "description": "AI Agent Framework, the Pydantic way",
+      "sdksFound": [
+        "OpenAI SDK"
+      ],
+      "antipatterns": [],
+      "filesScanned": 3,
+      "aiFilesFound": 1,
+      "resilienceScore": 100
+    }
+  ],
+  "totalStars": 15949,
+  "totalAIFiles": 1,
+  "sdksUsed": [
+    "OpenAI SDK"
+  ],
+  "totalHighSeverity": 0,
+  "totalMediumSeverity": 0,
+  "totalLowSeverity": 0,
+  "overallScore": 100,
+  "estimatedFailureRate": "1-3%",
+  "estimatedCostPerMonth": "$50-$200"
+}

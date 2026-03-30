@@ -11,6 +11,8 @@ import { proxyHandler } from "../proxyEngine";
 import { sentryWebhookHandler } from "../sentryWebhook";
 import { registerStripeWebhook } from "../stripeRouter";
 import { buildOpenApiSpec } from "../openApiSpec";
+import { existsSync, readFileSync } from "fs";
+import path from "path";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -104,6 +106,19 @@ async function startServer() {
     const host = req.headers["x-forwarded-host"] || req.get("host") || "localhost:3000";
     const baseUrl = `${protocol}://${host}`;
     res.json(buildOpenApiSpec(baseUrl));
+  });
+
+  // Public audit reports — serves JSON from data/audits/<slug>.json
+  app.get("/api/audits/:slug", (req, res) => {
+    const slug = req.params.slug.replace(/[^a-zA-Z0-9._-]/g, "");
+    const auditPath = path.resolve(import.meta.dirname, "..", "..", "data", "audits", `${slug}.json`);
+    if (!existsSync(auditPath)) {
+      res.status(404).json({ error: "Audit not found" });
+      return;
+    }
+    const data = JSON.parse(readFileSync(auditPath, "utf-8"));
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.json(data);
   });
 
   // tRPC API

@@ -1,0 +1,52 @@
+{
+  "name": "Composio",
+  "slug": "composiohq-composio",
+  "repos": [
+    {
+      "repo": "composio",
+      "fullName": "ComposioHQ/composio",
+      "stars": 27584,
+      "language": "TypeScript",
+      "description": "Composio powers 1000+ toolkits, tool search, context management, authentication, and a sandboxed workbench to help you build AI agents that turn intent into action.",
+      "sdksFound": [
+        "LangChain",
+        "OpenAI SDK",
+        "Anthropic SDK"
+      ],
+      "antipatterns": [
+        {
+          "name": "Unprotected HTTP call (no retry)",
+          "description": "External API call with no retry/backoff — one transient failure kills the workflow",
+          "severity": "High",
+          "count": 10,
+          "exampleFile": "python/providers/openai/openai_demo.py",
+          "exampleLine": "response = openai_client.chat.completions.create("
+        },
+        {
+          "name": "Hardcoded single model",
+          "description": "Locked to one LLM model with no fallback — outage = total downtime",
+          "severity": "Medium",
+          "count": 8,
+          "exampleFile": "python/providers/openai/openai_demo.py",
+          "exampleLine": "model=\"gpt-4o-mini\","
+        }
+      ],
+      "filesScanned": 22,
+      "aiFilesFound": 15,
+      "resilienceScore": 29
+    }
+  ],
+  "totalStars": 27584,
+  "totalAIFiles": 15,
+  "sdksUsed": [
+    "LangChain",
+    "OpenAI SDK",
+    "Anthropic SDK"
+  ],
+  "totalHighSeverity": 10,
+  "totalMediumSeverity": 8,
+  "totalLowSeverity": 0,
+  "overallScore": 29,
+  "estimatedFailureRate": "8-15%",
+  "estimatedCostPerMonth": "$800-$3,000"
+}

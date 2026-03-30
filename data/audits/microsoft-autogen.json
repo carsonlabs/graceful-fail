@@ -1,0 +1,74 @@
+{
+  "name": "Microsoft AutoGen",
+  "slug": "microsoft-autogen",
+  "repos": [
+    {
+      "repo": "autogen",
+      "fullName": "microsoft/autogen",
+      "stars": 56450,
+      "language": "Python",
+      "description": "A programming framework for agentic AI",
+      "sdksFound": [
+        "AutoGen",
+        "Anthropic SDK",
+        "OpenAI SDK",
+        "LangChain",
+        "Requests/httpx (Python HTTP)",
+        "LlamaIndex"
+      ],
+      "antipatterns": [
+        {
+          "name": "Bare except / empty catch",
+          "description": "Swallows all errors silently — agent has no idea something failed",
+          "severity": "High",
+          "count": 1,
+          "exampleFile": "python/packages/autogen-ext/src/autogen_ext/models/anthropic/_anthropic_client.py",
+          "exampleLine": "except Exception:"
+        },
+        {
+          "name": "Unprotected HTTP call (no retry)",
+          "description": "External API call with no retry/backoff — one transient failure kills the workflow",
+          "severity": "High",
+          "count": 13,
+          "exampleFile": "python/packages/autogen-ext/src/autogen_ext/models/anthropic/_anthropic_client.py",
+          "exampleLine": "future: asyncio.Task[Message] = asyncio.ensure_future(self._client.messages.create(**request_args))  # type: ignore"
+        },
+        {
+          "name": "Hardcoded single model",
+          "description": "Locked to one LLM model with no fallback — outage = total downtime",
+          "severity": "Medium",
+          "count": 9,
+          "exampleFile": "python/packages/autogen-ext/src/autogen_ext/models/anthropic/_anthropic_client.py",
+          "exampleLine": "model=\"claude-3-sonnet-20240229\","
+        },
+        {
+          "name": "No timeout on HTTP calls",
+          "description": "HTTP calls without timeout — agent hangs indefinitely on slow responses",
+          "severity": "Medium",
+          "count": 2,
+          "exampleFile": "python/packages/autogen-ext/src/autogen_ext/tools/langchain/_langchain_adapter.py",
+          "exampleLine": "response = requests.get(url)"
+        }
+      ],
+      "filesScanned": 36,
+      "aiFilesFound": 14,
+      "resilienceScore": 27
+    }
+  ],
+  "totalStars": 56450,
+  "totalAIFiles": 14,
+  "sdksUsed": [
+    "AutoGen",
+    "Anthropic SDK",
+    "OpenAI SDK",
+    "LangChain",
+    "Requests/httpx (Python HTTP)",
+    "LlamaIndex"
+  ],
+  "totalHighSeverity": 14,
+  "totalMediumSeverity": 11,
+  "totalLowSeverity": 0,
+  "overallScore": 27,
+  "estimatedFailureRate": "15-25%",
+  "estimatedCostPerMonth": "$2,000-$8,000"
+}

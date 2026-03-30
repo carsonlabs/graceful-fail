@@ -1,0 +1,74 @@
+{
+  "name": "LlamaIndex",
+  "slug": "run-llama-llama_index",
+  "repos": [
+    {
+      "repo": "llama_index",
+      "fullName": "run-llama/llama_index",
+      "stars": 48147,
+      "language": "Python",
+      "description": "LlamaIndex is the leading document agent and OCR platform",
+      "sdksFound": [
+        "OpenAI SDK",
+        "LlamaIndex",
+        "Anthropic SDK",
+        "LangChain",
+        "CrewAI",
+        "Requests/httpx (Python HTTP)"
+      ],
+      "antipatterns": [
+        {
+          "name": "Bare except / empty catch",
+          "description": "Swallows all errors silently — agent has no idea something failed",
+          "severity": "High",
+          "count": 8,
+          "exampleFile": "docs/examples/agent/openai_agent_context_retrieval.ipynb",
+          "exampleLine": "\"except:\\n\","
+        },
+        {
+          "name": "Unprotected HTTP call (no retry)",
+          "description": "External API call with no retry/backoff — one transient failure kills the workflow",
+          "severity": "High",
+          "count": 19,
+          "exampleFile": "llama-index-integrations/llms/llama-index-llms-anthropic/llama_index/llms/anthropic/base.py",
+          "exampleLine": "response = self._client.messages.create("
+        },
+        {
+          "name": "Pass on exception",
+          "description": "Catches error and does nothing — silent data loss",
+          "severity": "High",
+          "count": 6,
+          "exampleFile": "llama-index-integrations/llms/llama-index-llms-anthropic/llama_index/llms/anthropic/base.py",
+          "exampleLine": ""
+        },
+        {
+          "name": "Hardcoded single model",
+          "description": "Locked to one LLM model with no fallback — outage = total downtime",
+          "severity": "Medium",
+          "count": 3,
+          "exampleFile": "llama-index-integrations/llms/llama-index-llms-openai/llama_index/llms/openai/base.py",
+          "exampleLine": "llm = OpenAI(model=\"gpt-3.5-turbo\")"
+        }
+      ],
+      "filesScanned": 45,
+      "aiFilesFound": 42,
+      "resilienceScore": 37
+    }
+  ],
+  "totalStars": 48147,
+  "totalAIFiles": 42,
+  "sdksUsed": [
+    "OpenAI SDK",
+    "LlamaIndex",
+    "Anthropic SDK",
+    "LangChain",
+    "CrewAI",
+    "Requests/httpx (Python HTTP)"
+  ],
+  "totalHighSeverity": 33,
+  "totalMediumSeverity": 3,
+  "totalLowSeverity": 0,
+  "overallScore": 37,
+  "estimatedFailureRate": "15-25%",
+  "estimatedCostPerMonth": "$2,000-$8,000"
+}

@@ -1,0 +1,60 @@
+{
+  "name": "Griptape",
+  "slug": "griptape-ai-griptape",
+  "repos": [
+    {
+      "repo": "griptape",
+      "fullName": "griptape-ai/griptape",
+      "stars": 2504,
+      "language": "Python",
+      "description": "Modular Python framework for AI agents and workflows with chain-of-thought reasoning, tools, and memory. ",
+      "sdksFound": [
+        "OpenAI SDK",
+        "Anthropic SDK",
+        "Requests/httpx (Python HTTP)"
+      ],
+      "antipatterns": [
+        {
+          "name": "Unprotected HTTP call (no retry)",
+          "description": "External API call with no retry/backoff — one transient failure kills the workflow",
+          "severity": "High",
+          "count": 6,
+          "exampleFile": "griptape/drivers/prompt/openai_chat_prompt_driver.py",
+          "exampleLine": "result = self.client.chat.completions.create(**params)"
+        },
+        {
+          "name": "Hardcoded single model",
+          "description": "Locked to one LLM model with no fallback — outage = total downtime",
+          "severity": "Medium",
+          "count": 3,
+          "exampleFile": "griptape/configs/drivers/openai_drivers_config.py",
+          "exampleLine": "return OpenAiChatPromptDriver(model=\"gpt-4.1\")"
+        },
+        {
+          "name": "No timeout on HTTP calls",
+          "description": "HTTP calls without timeout — agent hangs indefinitely on slow responses",
+          "severity": "Medium",
+          "count": 1,
+          "exampleFile": "docs/recipes/src/talk_to_a_document.py",
+          "exampleLine": "doc_bytes = requests.get(\"https://arxiv.org/pdf/1706.03762.pdf\").content"
+        }
+      ],
+      "filesScanned": 14,
+      "aiFilesFound": 13,
+      "resilienceScore": 39
+    }
+  ],
+  "totalStars": 2504,
+  "totalAIFiles": 13,
+  "sdksUsed": [
+    "OpenAI SDK",
+    "Anthropic SDK",
+    "Requests/httpx (Python HTTP)"
+  ],
+  "totalHighSeverity": 6,
+  "totalMediumSeverity": 4,
+  "totalLowSeverity": 0,
+  "overallScore": 39,
+  "estimatedFailureRate": "8-15%",
+  "estimatedCostPerMonth": "$800-$3,000"
+}

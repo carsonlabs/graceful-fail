@@ -1,0 +1,50 @@
+{
+  "name": "LangGraph",
+  "slug": "langchain-ai-langgraph",
+  "repos": [
+    {
+      "repo": "langgraph",
+      "fullName": "langchain-ai/langgraph",
+      "stars": 27947,
+      "language": "Python",
+      "description": "Build resilient language agents as graphs.",
+      "sdksFound": [
+        "LangChain",
+        "OpenAI SDK"
+      ],
+      "antipatterns": [
+        {
+          "name": "Unprotected HTTP call (no retry)",
+          "description": "External API call with no retry/backoff — one transient failure kills the workflow",
+          "severity": "High",
+          "count": 5,
+          "exampleFile": "libs/cli/js-examples/src/agent/graph.ts",
+          "exampleLine": "* const chatCompletion = await openai.chat.completions.create({"
+        },
+        {
+          "name": "Hardcoded single model",
+          "description": "Locked to one LLM model with no fallback — outage = total downtime",
+          "severity": "Medium",
+          "count": 7,
+          "exampleFile": "libs/cli/js-examples/src/agent/graph.ts",
+          "exampleLine": "*   model: \"claude-3-5-sonnet-20240620\","
+        }
+      ],
+      "filesScanned": 18,
+      "aiFilesFound": 9,
+      "resilienceScore": 37
+    }
+  ],
+  "totalStars": 27947,
+  "totalAIFiles": 9,
+  "sdksUsed": [
+    "LangChain",
+    "OpenAI SDK"
+  ],
+  "totalHighSeverity": 5,
+  "totalMediumSeverity": 7,
+  "totalLowSeverity": 0,
+  "overallScore": 37,
+  "estimatedFailureRate": "3-8%",
+  "estimatedCostPerMonth": "$200-$800"
+}

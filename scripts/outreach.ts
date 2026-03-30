@@ -562,7 +562,13 @@ async function runSingle(opts: RunOpts): Promise<ManifestEntry | null> {
 
   // Save raw data
   const dataPath = resolve(outDir, `audit-data.json`);
-  writeFileSync(dataPath, JSON.stringify(profile, null, 2), "utf-8");
+  const profileJson = JSON.stringify(profile, null, 2);
+  writeFileSync(dataPath, profileJson, "utf-8");
+
+  // Also copy to data/audits/ for the live web report at /audit/<slug>
+  const webAuditDir = resolve(import.meta.dirname ?? ".", "..", "data", "audits");
+  mkdirSync(webAuditDir, { recursive: true });
+  writeFileSync(resolve(webAuditDir, `${slug}.json`), profileJson, "utf-8");
 
   // Extract subject line from email draft
   const subjectMatch = emailDraft.match(/\*\*Subject:\*\*\s*(.+)/);
@@ -572,6 +578,7 @@ async function runSingle(opts: RunOpts): Promise<ManifestEntry | null> {
   console.log(`   📄 PDF Report: ${slug}-resilience-audit.pdf`);
   console.log(`   📧 Email Draft: email-draft.md`);
   console.log(`   📊 Raw Data: audit-data.json`);
+  console.log(`   🌐 Live Report: selfheal.dev/audit/${slug}`);
   console.log();
 
   return {
@@ -1090,7 +1097,9 @@ Hi there,
 
 ${openingLine}
 
-I put together a report breaking down each issue, which files they're in, and the estimated impact. It's attached.
+I put together a report breaking down each issue, which files they're in, and the estimated impact:
+
+https://selfheal.dev/audit/${profile.slug}
 
 Here's the quick summary:
 ${bulletPoints.join("\n")}

@@ -15,6 +15,11 @@ import { existsSync, readFileSync, mkdirSync, writeFileSync } from "fs";
 import path from "path";
 import { runScan } from "../scanEngine";
 
+// Resolve project root — works from both server/_core/ (dev) and dist/ (prod)
+const PROJECT_ROOT = process.env.NODE_ENV === "production"
+  ? path.resolve(import.meta.dirname, "..")
+  : path.resolve(import.meta.dirname, "..", "..");
+
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
     const server = net.createServer();
@@ -112,7 +117,7 @@ async function startServer() {
   // Public audit reports — serves JSON from data/audits/<slug>.json
   app.get("/api/audits/:slug", (req, res) => {
     const slug = req.params.slug.replace(/[^a-zA-Z0-9._-]/g, "");
-    const auditPath = path.resolve(import.meta.dirname, "..", "..", "data", "audits", `${slug}.json`);
+    const auditPath = path.resolve(PROJECT_ROOT, "data", "audits", `${slug}.json`);
     if (!existsSync(auditPath)) {
       res.status(404).json({ error: "Audit not found" });
       return;
@@ -137,7 +142,7 @@ async function startServer() {
     // Sanitize
     const clean = repo.replace(/[^a-zA-Z0-9/_.-]/g, "").slice(0, 100);
     const slug = clean.replace(/\//g, "-").replace(/[^a-zA-Z0-9.-]/g, "_");
-    const auditDir = path.resolve(import.meta.dirname, "..", "..", "data", "audits");
+    const auditDir = path.resolve(PROJECT_ROOT, "data", "audits");
     const cachedPath = path.resolve(auditDir, `${slug}.json`);
 
     // Check cache first — return existing scan if less than 24h old

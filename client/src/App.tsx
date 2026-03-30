@@ -18,6 +18,7 @@ import Changelog from "./pages/Changelog";
 import Referral from "./pages/Referral";
 import SlackIntegration from "./pages/SlackIntegration";
 import DigestSettings from "./pages/DigestSettings";
+import SentryIntegration from "./pages/SentryIntegration";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 
@@ -37,6 +38,7 @@ function Router() {
       <Route path="/changelog" component={Changelog} />
       <Route path="/dashboard/referral" component={Referral} />
       <Route path="/dashboard/integrations/slack" component={SlackIntegration} />
+      <Route path="/dashboard/integrations/sentry" component={SentryIntegration} />
       <Route path="/dashboard/digest" component={DigestSettings} />
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />

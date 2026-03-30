@@ -2,7 +2,7 @@
 
 All notable changes to SelfHeal (graceful-fail) will be documented in this file.
 
-## [Unreleased] — 2026-03-29
+## [0.3.0] — 2026-03-30
 
 ### Added
 - **Auto-Retry with Fixed Payload** — When the LLM diagnoses a retriable error and returns a `suggested_payload_diff`, SelfHeal now automatically applies the diff to the original request body and retries the destination API call. If the retry succeeds, the caller receives a transparent success response with `selfheal_auto_fixed: true` metadata. This is the core differentiator — no other tool in the market does this.

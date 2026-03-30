@@ -21,6 +21,7 @@ import {
   Mail,
   Menu,
   X,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
@@ -60,6 +61,7 @@ const NAV_SECTIONS = [
     items: [
       { href: "/dashboard/webhooks", label: "Webhooks", icon: Webhook },
       { href: "/dashboard/integrations/slack", label: "Slack Alerts", icon: Slack },
+      { href: "/dashboard/integrations/sentry", label: "Sentry", icon: Shield },
       { href: "/dashboard/digest", label: "Weekly Digest", icon: Mail },
     ],
   },

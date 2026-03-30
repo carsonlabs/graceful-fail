@@ -2,7 +2,7 @@ import { useState } from "react";
 import AppLayout from "@/components/AppLayout";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart2, Zap, AlertTriangle, CheckCircle2, Key, ArrowRight, X, FlaskConical, Webhook, CreditCard, Copy, Check } from "lucide-react";
+import { BarChart2, Zap, AlertTriangle, CheckCircle2, Key, ArrowRight, X, FlaskConical, Webhook, CreditCard, Copy, Check, RotateCcw, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 
@@ -53,6 +53,10 @@ export default function Dashboard() {
   const allDone = completedSteps === onboardingSteps.length;
   const showChecklist = onboarding && !onboarding.isDismissed && !allDone;
 
+  const autoRetries = stats?.autoRetries ?? 0;
+  const retrySuccesses = stats?.retrySuccesses ?? 0;
+  const retryRate = autoRetries > 0 ? Math.round((retrySuccesses / autoRetries) * 100) : 0;
+
   const statCards = [
     {
       title: "Total Requests",
@@ -69,6 +73,22 @@ export default function Dashboard() {
       description: "LLM analysis triggered",
       color: "text-amber-400",
       bg: "bg-amber-500/10",
+    },
+    {
+      title: "Auto-Retries",
+      value: autoRetries > 0 ? `${autoRetries} (${retryRate}% fixed)` : "0",
+      icon: RotateCcw,
+      description: "Errors auto-fixed and retried",
+      color: "text-cyan-400",
+      bg: "bg-cyan-500/10",
+    },
+    {
+      title: "Sentry Events",
+      value: stats?.sentryEvents ?? 0,
+      icon: Shield,
+      description: "Analyzed from Sentry",
+      color: "text-purple-400",
+      bg: "bg-purple-500/10",
     },
     {
       title: "Credits Used",
@@ -97,7 +117,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
           {statCards.map(({ title, value, icon: Icon, description, color, bg }) => (
             <Card key={title} className="bg-card border-border">
               <CardHeader className="flex flex-row items-center justify-between pb-2 pt-5 px-5">

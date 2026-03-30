@@ -243,19 +243,33 @@ export async function checkRateLimit(
 
 export async function getDashboardStats(userId: number) {
   const db = await getDb();
-  if (!db) return { totalRequests: 0, interceptedRequests: 0, creditsUsed: 0, successRate: 0 };
+  if (!db) return { totalRequests: 0, interceptedRequests: 0, creditsUsed: 0, successRate: 0, autoRetries: 0, retrySuccesses: 0, sentryEvents: 0 };
 
   const month = getCurrentMonth();
-  const result = await db
-    .select({
-      totalRequests: sql<number>`COALESCE(SUM(totalRequests), 0)`,
-      interceptedRequests: sql<number>`COALESCE(SUM(interceptedRequests), 0)`,
-      creditsUsed: sql<number>`COALESCE(SUM(creditsUsed), 0)`,
-    })
-    .from(usageStats)
-    .where(and(eq(usageStats.userId, userId), eq(usageStats.month, month)));
+  const [usageResult, extrasResult] = await Promise.all([
+    db
+      .select({
+        totalRequests: sql<number>`COALESCE(SUM(totalRequests), 0)`,
+        interceptedRequests: sql<number>`COALESCE(SUM(interceptedRequests), 0)`,
+        creditsUsed: sql<number>`COALESCE(SUM(creditsUsed), 0)`,
+      })
+      .from(usageStats)
+      .where(and(eq(usageStats.userId, userId), eq(usageStats.month, month))),
+    db
+      .select({
+        autoRetries: sql<number>`COALESCE(SUM(CASE WHEN wasAutoRetried = 1 THEN 1 ELSE 0 END), 0)`,
+        retrySuccesses: sql<number>`COALESCE(SUM(CASE WHEN wasAutoRetried = 1 AND retrySucceeded = 1 THEN 1 ELSE 0 END), 0)`,
+        sentryEvents: sql<number>`COALESCE(SUM(CASE WHEN source = 'sentry' THEN 1 ELSE 0 END), 0)`,
+      })
+      .from(requestLogs)
+      .where(and(
+        eq(requestLogs.userId, userId),
+        sql`createdAt >= DATE_FORMAT(NOW(), '%Y-%m-01')`,
+      )),
+  ]);
 
-  const row = result[0] ?? { totalRequests: 0, interceptedRequests: 0, creditsUsed: 0 };
+  const row = usageResult[0] ?? { totalRequests: 0, interceptedRequests: 0, creditsUsed: 0 };
+  const extras = extrasResult[0] ?? { autoRetries: 0, retrySuccesses: 0, sentryEvents: 0 };
   const total = Number(row.totalRequests);
   const intercepted = Number(row.interceptedRequests);
   const successRate = total > 0 ? Math.round(((total - intercepted) / total) * 100) : 100;
@@ -265,6 +279,9 @@ export async function getDashboardStats(userId: number) {
     interceptedRequests: intercepted,
     creditsUsed: Number(row.creditsUsed),
     successRate,
+    autoRetries: Number(extras.autoRetries),
+    retrySuccesses: Number(extras.retrySuccesses),
+    sentryEvents: Number(extras.sentryEvents),
   };
 }
 

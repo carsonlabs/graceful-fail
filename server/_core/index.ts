@@ -123,20 +123,60 @@ async function startServer() {
   });
 
   // Public scan endpoint — scans a GitHub repo for AI resilience issues
+  // Rate limit: 1 scan per IP per 5 minutes, cached results served instantly
+  const scanRateLimit = new Map<string, number>();
+  const SCAN_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
   app.post("/api/scan", async (req, res) => {
     const { repo } = req.body as { repo?: string };
     if (!repo || !repo.includes("/")) {
       res.status(400).json({ error: "Provide a repo in owner/repo format" });
       return;
     }
+
     // Sanitize
     const clean = repo.replace(/[^a-zA-Z0-9/_.-]/g, "").slice(0, 100);
+    const slug = clean.replace(/\//g, "-").replace(/[^a-zA-Z0-9.-]/g, "_");
+    const auditDir = path.resolve(import.meta.dirname, "..", "..", "data", "audits");
+    const cachedPath = path.resolve(auditDir, `${slug}.json`);
+
+    // Check cache first — return existing scan if less than 24h old
+    if (existsSync(cachedPath)) {
+      try {
+        const cached = JSON.parse(readFileSync(cachedPath, "utf-8"));
+        const scannedAt = cached.scannedAt ? new Date(cached.scannedAt).getTime() : 0;
+        const ageMs = Date.now() - scannedAt;
+        if (ageMs < 24 * 60 * 60 * 1000) {
+          res.setHeader("X-Cache", "HIT");
+          res.json(cached);
+          return;
+        }
+      } catch { /* stale or invalid cache, re-scan */ }
+    }
+
+    // Rate limit per IP
+    const ip = req.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() ?? req.ip ?? "unknown";
+    const lastScan = scanRateLimit.get(ip) ?? 0;
+    if (Date.now() - lastScan < SCAN_COOLDOWN_MS) {
+      const waitSec = Math.ceil((SCAN_COOLDOWN_MS - (Date.now() - lastScan)) / 1000);
+      res.status(429).json({ error: `Rate limited. Try again in ${waitSec} seconds.` });
+      return;
+    }
+
+    scanRateLimit.set(ip, Date.now());
+
+    // Clean up old rate limit entries every 100 requests
+    if (scanRateLimit.size > 1000) {
+      const cutoff = Date.now() - SCAN_COOLDOWN_MS;
+      for (const [k, v] of scanRateLimit) { if (v < cutoff) scanRateLimit.delete(k); }
+    }
+
     try {
       const result = await runScan(clean);
-      // Cache the result so it gets a permalink at /audit/<slug>
-      const auditDir = path.resolve(import.meta.dirname, "..", "..", "data", "audits");
+      // Cache the result
       mkdirSync(auditDir, { recursive: true });
-      writeFileSync(path.resolve(auditDir, `${result.slug}.json`), JSON.stringify(result, null, 2), "utf-8");
+      writeFileSync(cachedPath, JSON.stringify(result, null, 2), "utf-8");
+      res.setHeader("X-Cache", "MISS");
       res.json(result);
     } catch (err: any) {
       const msg = err.message ?? "Scan failed";

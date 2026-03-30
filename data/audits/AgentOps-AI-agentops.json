@@ -1,0 +1,58 @@
+{
+  "name": "AgentOps",
+  "slug": "AgentOps-AI-agentops",
+  "repos": [
+    {
+      "repo": "agentops",
+      "fullName": "AgentOps-AI/agentops",
+      "stars": 5412,
+      "language": "Python",
+      "description": "Python SDK for AI agent monitoring, LLM cost tracking, benchmarking, and more. Integrates with most LLMs and agent frameworks including CrewAI, Agno, OpenAI Agents SDK, Langchain, Autogen, AG2, and CamelAI",
+      "sdksFound": [
+        "OpenAI SDK",
+        "Anthropic SDK",
+        "LangChain",
+        "CrewAI",
+        "AutoGen",
+        "LlamaIndex"
+      ],
+      "antipatterns": [
+        {
+          "name": "Unprotected HTTP call (no retry)",
+          "description": "External API call with no retry/backoff — one transient failure kills the workflow",
+          "severity": "High",
+          "count": 40,
+          "exampleFile": "examples/openai/openai_example_sync.py",
+          "exampleLine": "response = client.chat.completions.create("
+        },
+        {
+          "name": "Hardcoded single model",
+          "description": "Locked to one LLM model with no fallback — outage = total downtime",
+          "severity": "Medium",
+          "count": 24,
+          "exampleFile": "examples/openai/openai_example_sync.py",
+          "exampleLine": "model=\"gpt-4o-mini\","
+        }
+      ],
+      "filesScanned": 51,
+      "aiFilesFound": 38,
+      "resilienceScore": 27
+    }
+  ],
+  "totalStars": 5412,
+  "totalAIFiles": 38,
+  "sdksUsed": [
+    "OpenAI SDK",
+    "Anthropic SDK",
+    "LangChain",
+    "CrewAI",
+    "AutoGen",
+    "LlamaIndex"
+  ],
+  "totalHighSeverity": 40,
+  "totalMediumSeverity": 24,
+  "totalLowSeverity": 0,
+  "overallScore": 27,
+  "estimatedFailureRate": "5-12%",
+  "estimatedCostPerMonth": "$500-$2,000"
+}

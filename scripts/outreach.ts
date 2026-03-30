@@ -516,8 +516,9 @@ async function runSingle(opts: RunOpts): Promise<ManifestEntry | null> {
   const totalLow = scans.reduce((sum, s) => sum + s.antipatterns.filter((a) => a.severity === "Low").reduce((c, a) => c + a.count, 0), 0);
   const avgScore = Math.round(scans.reduce((sum, s) => sum + s.resilienceScore, 0) / scans.length);
 
-  const failureRate = totalHigh > 10 ? "15-25%" : totalHigh > 5 ? "8-15%" : totalHigh > 0 ? "3-8%" : "1-3%";
-  const costPerMonth = totalHigh > 10 ? "$2,000-$8,000" : totalHigh > 5 ? "$800-$3,000" : totalHigh > 0 ? "$200-$800" : "$50-$200";
+  // Conservative estimates based on typical agent deployments
+  const failureRate = totalHigh > 10 ? "5-12%" : totalHigh > 5 ? "3-8%" : totalHigh > 0 ? "1-5%" : "<1%";
+  const costPerMonth = totalHigh > 10 ? "$500-$2,000" : totalHigh > 5 ? "$200-$800" : totalHigh > 0 ? "$50-$300" : "<$50";
 
   const slug = opts.target.replace(/\//g, "-").replace(/[^a-zA-Z0-9.-]/g, "_");
   const displayName = opts.name ?? (opts.mode === "org" ? opts.target : opts.target.split("/")[0]!);

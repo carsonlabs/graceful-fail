@@ -1,0 +1,78 @@
+{
+  "name": "Julep AI",
+  "slug": "julep-ai-julep",
+  "repos": [
+    {
+      "repo": "julep",
+      "fullName": "julep-ai/julep",
+      "stars": 6603,
+      "language": "Jupyter Notebook",
+      "description": "Deploy serverless AI workflows at scale. Firebase for AI agents",
+      "sdksFound": [
+        "OpenAI SDK",
+        "Requests/httpx (Python HTTP)",
+        "LangChain",
+        "LlamaIndex"
+      ],
+      "antipatterns": [
+        {
+          "name": "Unprotected HTTP call (no retry)",
+          "description": "External API call with no retry/backoff — one transient failure kills the workflow",
+          "severity": "High",
+          "count": 7,
+          "exampleFile": "documentation/responses/examples.mdx",
+          "exampleLine": "response = requests.get(url)"
+        },
+        {
+          "name": "Bare except / empty catch",
+          "description": "Swallows all errors silently — agent has no idea something failed",
+          "severity": "High",
+          "count": 4,
+          "exampleFile": "src/agents-api/agents_api/common/utils/humanization_utils.py",
+          "exampleLine": "except Exception:"
+        },
+        {
+          "name": "Hardcoded single model",
+          "description": "Locked to one LLM model with no fallback — outage = total downtime",
+          "severity": "Medium",
+          "count": 2,
+          "exampleFile": "documentation/responses/examples.mdx",
+          "exampleLine": "model=\"gpt-4o-mini\","
+        },
+        {
+          "name": "No timeout on HTTP calls",
+          "description": "HTTP calls without timeout — agent hangs indefinitely on slow responses",
+          "severity": "Medium",
+          "count": 4,
+          "exampleFile": "documentation/responses/examples.mdx",
+          "exampleLine": "response = requests.get(url)"
+        },
+        {
+          "name": "Raw status code check only",
+          "description": "Checks HTTP status but doesn't parse error body — agent gets no context on what went wrong",
+          "severity": "Medium",
+          "count": 1,
+          "exampleFile": "src/agents-api/agents_api/common/utils/humanization_utils.py",
+          "exampleLine": "if response.status_code == 200:"
+        }
+      ],
+      "filesScanned": 31,
+      "aiFilesFound": 8,
+      "resilienceScore": 30
+    }
+  ],
+  "totalStars": 6603,
+  "totalAIFiles": 8,
+  "sdksUsed": [
+    "OpenAI SDK",
+    "Requests/httpx (Python HTTP)",
+    "LangChain",
+    "LlamaIndex"
+  ],
+  "totalHighSeverity": 11,
+  "totalMediumSeverity": 7,
+  "totalLowSeverity": 0,
+  "overallScore": 30,
+  "estimatedFailureRate": "5-12%",
+  "estimatedCostPerMonth": "$500-$2,000"
+}

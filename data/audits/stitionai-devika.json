@@ -1,0 +1,50 @@
+{
+  "name": "Devika",
+  "slug": "stitionai-devika",
+  "repos": [
+    {
+      "repo": "devika",
+      "fullName": "stitionai/devika",
+      "stars": 19498,
+      "language": "Python",
+      "description": "Devika is the first open-source implementation of an Agentic Software Engineer. Initially started as an open-source alternative to Devin.",
+      "sdksFound": [
+        "OpenAI SDK",
+        "Anthropic SDK"
+      ],
+      "antipatterns": [
+        {
+          "name": "Unprotected HTTP call (no retry)",
+          "description": "External API call with no retry/backoff — one transient failure kills the workflow",
+          "severity": "High",
+          "count": 5,
+          "exampleFile": "src/llm/openai_client.py",
+          "exampleLine": "chat_completion = self.client.chat.completions.create("
+        },
+        {
+          "name": "Bare except / empty catch",
+          "description": "Swallows all errors silently — agent has no idea something failed",
+          "severity": "High",
+          "count": 1,
+          "exampleFile": "src/llm/lm_studio_client.py",
+          "exampleLine": "except:"
+        }
+      ],
+      "filesScanned": 7,
+      "aiFilesFound": 4,
+      "resilienceScore": 59
+    }
+  ],
+  "totalStars": 19498,
+  "totalAIFiles": 4,
+  "sdksUsed": [
+    "OpenAI SDK",
+    "Anthropic SDK"
+  ],
+  "totalHighSeverity": 6,
+  "totalMediumSeverity": 0,
+  "totalLowSeverity": 0,
+  "overallScore": 59,
+  "estimatedFailureRate": "3-8%",
+  "estimatedCostPerMonth": "$200-$800"
+}

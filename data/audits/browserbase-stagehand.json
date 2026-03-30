@@ -1,0 +1,56 @@
+{
+  "name": "Browserbase",
+  "slug": "browserbase-stagehand",
+  "repos": [
+    {
+      "repo": "stagehand",
+      "fullName": "browserbase/stagehand",
+      "stars": 21752,
+      "language": "TypeScript",
+      "description": "The AI Browser Automation Framework",
+      "sdksFound": [
+        "OpenAI SDK",
+        "Anthropic SDK",
+        "Vercel AI SDK",
+        "LangChain",
+        "CrewAI"
+      ],
+      "antipatterns": [
+        {
+          "name": "Unprotected HTTP call (no retry)",
+          "description": "External API call with no retry/backoff — one transient failure kills the workflow",
+          "severity": "High",
+          "count": 3,
+          "exampleFile": "packages/core/lib/v3/llm/OpenAIClient.ts",
+          "exampleLine": "const response = await this.client.chat.completions.create(body);"
+        },
+        {
+          "name": "Pass on exception",
+          "description": "Catches error and does nothing — silent data loss",
+          "severity": "High",
+          "count": 1,
+          "exampleFile": "packages/core/lib/v3/agent/MicrosoftCUAClient.ts",
+          "exampleLine": ""
+        }
+      ],
+      "filesScanned": 40,
+      "aiFilesFound": 24,
+      "resilienceScore": 65
+    }
+  ],
+  "totalStars": 21752,
+  "totalAIFiles": 24,
+  "sdksUsed": [
+    "OpenAI SDK",
+    "Anthropic SDK",
+    "Vercel AI SDK",
+    "LangChain",
+    "CrewAI"
+  ],
+  "totalHighSeverity": 4,
+  "totalMediumSeverity": 0,
+  "totalLowSeverity": 0,
+  "overallScore": 65,
+  "estimatedFailureRate": "1-5%",
+  "estimatedCostPerMonth": "$50-$300"
+}

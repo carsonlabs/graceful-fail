@@ -1,0 +1,68 @@
+{
+  "name": "Mem0",
+  "slug": "mem0ai-mem0",
+  "repos": [
+    {
+      "repo": "mem0",
+      "fullName": "mem0ai/mem0",
+      "stars": 51494,
+      "language": "Python",
+      "description": "Universal memory layer for AI Agents",
+      "sdksFound": [
+        "OpenAI SDK",
+        "Anthropic SDK",
+        "LangChain",
+        "CrewAI",
+        "AutoGen",
+        "LlamaIndex",
+        "Vercel AI SDK"
+      ],
+      "antipatterns": [
+        {
+          "name": "Unprotected HTTP call (no retry)",
+          "description": "External API call with no retry/backoff — one transient failure kills the workflow",
+          "severity": "High",
+          "count": 8,
+          "exampleFile": "mem0/llms/openai.py",
+          "exampleLine": "response = self.client.chat.completions.create(**params)"
+        },
+        {
+          "name": "Bare except / empty catch",
+          "description": "Swallows all errors silently — agent has no idea something failed",
+          "severity": "High",
+          "count": 1,
+          "exampleFile": "mem0-ts/src/oss/src/llms/langchain.ts",
+          "exampleLine": "} catch (e) {}"
+        },
+        {
+          "name": "Hardcoded single model",
+          "description": "Locked to one LLM model with no fallback — outage = total downtime",
+          "severity": "Medium",
+          "count": 9,
+          "exampleFile": "mem0/llms/openai.py",
+          "exampleLine": "self.config.model = \"gpt-4.1-nano-2025-04-14\""
+        }
+      ],
+      "filesScanned": 40,
+      "aiFilesFound": 25,
+      "resilienceScore": 28
+    }
+  ],
+  "totalStars": 51494,
+  "totalAIFiles": 25,
+  "sdksUsed": [
+    "OpenAI SDK",
+    "Anthropic SDK",
+    "LangChain",
+    "CrewAI",
+    "AutoGen",
+    "LlamaIndex",
+    "Vercel AI SDK"
+  ],
+  "totalHighSeverity": 9,
+  "totalMediumSeverity": 9,
+  "totalLowSeverity": 0,
+  "overallScore": 28,
+  "estimatedFailureRate": "3-8%",
+  "estimatedCostPerMonth": "$200-$800"
+}

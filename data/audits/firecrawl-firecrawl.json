@@ -1,0 +1,62 @@
+{
+  "name": "Firecrawl",
+  "slug": "firecrawl-firecrawl",
+  "repos": [
+    {
+      "repo": "firecrawl",
+      "fullName": "firecrawl/firecrawl",
+      "stars": 101225,
+      "language": "TypeScript",
+      "description": "🔥 The Web Data API for AI - Turn entire websites into LLM-ready markdown or structured data",
+      "sdksFound": [
+        "OpenAI SDK",
+        "Anthropic SDK",
+        "LangChain",
+        "Vercel AI SDK"
+      ],
+      "antipatterns": [
+        {
+          "name": "Unprotected HTTP call (no retry)",
+          "description": "External API call with no retry/backoff — one transient failure kills the workflow",
+          "severity": "High",
+          "count": 19,
+          "exampleFile": "examples/openai_swarm_firecrawl/main.py",
+          "exampleLine": "response = client.chat.completions.create("
+        },
+        {
+          "name": "Bare except / empty catch",
+          "description": "Swallows all errors silently — agent has no idea something failed",
+          "severity": "High",
+          "count": 2,
+          "exampleFile": "apps/api/src/lib/extract/fire-0/llmExtract-f0.ts",
+          "exampleLine": "} catch (_) {}"
+        },
+        {
+          "name": "Hardcoded single model",
+          "description": "Locked to one LLM model with no fallback — outage = total downtime",
+          "severity": "Medium",
+          "count": 9,
+          "exampleFile": "examples/openai_swarm_firecrawl/main.py",
+          "exampleLine": "model=\"gpt-4o-mini\","
+        }
+      ],
+      "filesScanned": 19,
+      "aiFilesFound": 14,
+      "resilienceScore": 28
+    }
+  ],
+  "totalStars": 101225,
+  "totalAIFiles": 14,
+  "sdksUsed": [
+    "OpenAI SDK",
+    "Anthropic SDK",
+    "LangChain",
+    "Vercel AI SDK"
+  ],
+  "totalHighSeverity": 21,
+  "totalMediumSeverity": 9,
+  "totalLowSeverity": 0,
+  "overallScore": 28,
+  "estimatedFailureRate": "5-12%",
+  "estimatedCostPerMonth": "$500-$2,000"
+}

@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#1e1b4b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="100%" style="stop-color:#818cf8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Top accent bar -->
+  <rect width="1200" height="4" fill="url(#accent)"/>
+
+  <!-- Subtle grid pattern -->
+  <g opacity="0.03" stroke="#ffffff" stroke-width="1">
+    <line x1="0" y1="0" x2="0" y2="630"/><line x1="60" y1="0" x2="60" y2="630"/>
+    <line x1="120" y1="0" x2="120" y2="630"/><line x1="180" y1="0" x2="180" y2="630"/>
+    <line x1="240" y1="0" x2="240" y2="630"/><line x1="300" y1="0" x2="300" y2="630"/>
+    <line x1="360" y1="0" x2="360" y2="630"/><line x1="420" y1="0" x2="420" y2="630"/>
+    <line x1="480" y1="0" x2="480" y2="630"/><line x1="540" y1="0" x2="540" y2="630"/>
+    <line x1="600" y1="0" x2="600" y2="630"/><line x1="660" y1="0" x2="660" y2="630"/>
+    <line x1="720" y1="0" x2="720" y2="630"/><line x1="780" y1="0" x2="780" y2="630"/>
+    <line x1="840" y1="0" x2="840" y2="630"/><line x1="900" y1="0" x2="900" y2="630"/>
+    <line x1="960" y1="0" x2="960" y2="630"/><line x1="1020" y1="0" x2="1020" y2="630"/>
+    <line x1="1080" y1="0" x2="1080" y2="630"/><line x1="1140" y1="0" x2="1140" y2="630"/>
+    <line x1="0" y1="60" x2="1200" y2="60"/><line x1="0" y1="120" x2="1200" y2="120"/>
+    <line x1="0" y1="180" x2="1200" y2="180"/><line x1="0" y1="240" x2="1200" y2="240"/>
+    <line x1="0" y1="300" x2="1200" y2="300"/><line x1="0" y1="360" x2="1200" y2="360"/>
+    <line x1="0" y1="420" x2="1200" y2="420"/><line x1="0" y1="480" x2="1200" y2="480"/>
+    <line x1="0" y1="540" x2="1200" y2="540"/>
+  </g>
+
+  <!-- Left side content -->
+
+  <!-- Logo icon -->
+  <rect x="80" y="120" width="44" height="44" rx="10" fill="#6366f1"/>
+  <path d="M95 135 L109 135 L109 142 L102 149 L95 142 Z" fill="white" opacity="0.95"/>
+  <path d="M99 148 L102 151 L105 148" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+  <!-- Brand name -->
+  <text x="136" y="153" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="700" fill="white">SelfHeal</text>
+
+  <!-- Main headline -->
+  <text x="80" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="52" font-weight="800" fill="white">Self-healing API proxy</text>
+  <text x="80" y="300" font-family="system-ui, -apple-system, sans-serif" font-size="52" font-weight="800" fill="white">for <tspan fill="#818cf8">AI agents</tspan></text>
+
+  <!-- Tagline -->
+  <text x="80" y="355" font-family="system-ui, -apple-system, sans-serif" font-size="20" fill="#94a3b8">Intercepts failed API calls. Analyzes with an LLM.</text>
+  <text x="80" y="382" font-family="system-ui, -apple-system, sans-serif" font-size="20" fill="#94a3b8">Returns structured fix instructions your agent can act on.</text>
+
+  <!-- Install badges -->
+  <rect x="80" y="420" width="240" height="36" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="100" y="444" font-family="ui-monospace, monospace" font-size="14" fill="#94a3b8">pip install <tspan fill="#818cf8">graceful-fail</tspan></text>
+
+  <rect x="336" y="420" width="250" height="36" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="356" y="444" font-family="ui-monospace, monospace" font-size="14" fill="#94a3b8">npm install <tspan fill="#818cf8">graceful-fail</tspan></text>
+
+  <!-- URL -->
+  <text x="80" y="530" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="600" fill="#6366f1">selfheal.dev</text>
+
+  <!-- Right side: mini JSON envelope -->
+  <g transform="translate(720, 110)">
+    <!-- Code window chrome -->
+    <rect width="400" height="400" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <rect width="400" height="36" rx="12" fill="#0f172a"/>
+    <rect y="24" width="400" height="12" fill="#0f172a"/>
+    <circle cx="20" cy="18" r="5" fill="#ef4444" opacity="0.6"/>
+    <circle cx="38" cy="18" r="5" fill="#eab308" opacity="0.6"/>
+    <circle cx="56" cy="18" r="5" fill="#22c55e" opacity="0.6"/>
+    <text x="80" y="22" font-family="ui-monospace, monospace" font-size="11" fill="#64748b">response.json</text>
+
+    <!-- JSON content -->
+    <text y="62" font-family="ui-monospace, monospace" font-size="12.5" fill="#94a3b8">
+      <tspan x="20" dy="0">{</tspan>
+      <tspan x="32" dy="22" fill="#818cf8">"graceful_fail_intercepted"</tspan><tspan fill="#94a3b8">: </tspan><tspan fill="#22c55e">true</tspan><tspan fill="#94a3b8">,</tspan>
+      <tspan x="32" dy="22" fill="#818cf8">"original_status_code"</tspan><tspan fill="#94a3b8">: </tspan><tspan fill="#f97316">422</tspan><tspan fill="#94a3b8">,</tspan>
+      <tspan x="32" dy="22" fill="#818cf8">"error_analysis"</tspan><tspan fill="#94a3b8">: {</tspan>
+      <tspan x="44" dy="22" fill="#818cf8">"is_retriable"</tspan><tspan fill="#94a3b8">: </tspan><tspan fill="#22c55e">true</tspan><tspan fill="#94a3b8">,</tspan>
+      <tspan x="44" dy="22" fill="#818cf8">"actionable_fix"</tspan><tspan fill="#94a3b8">:</tspan>
+      <tspan x="52" dy="22" fill="#fbbf24">"Add 'email' field to</tspan>
+      <tspan x="52" dy="22" fill="#fbbf24"> request body and retry."</tspan><tspan fill="#94a3b8">,</tspan>
+      <tspan x="44" dy="22" fill="#818cf8">"suggested_diff"</tspan><tspan fill="#94a3b8">: {</tspan>
+      <tspan x="56" dy="22" fill="#818cf8">"add"</tspan><tspan fill="#94a3b8">: {</tspan>
+      <tspan x="68" dy="22" fill="#818cf8">"email"</tspan><tspan fill="#94a3b8">: </tspan><tspan fill="#22c55e">"string"</tspan>
+      <tspan x="56" dy="22" fill="#94a3b8">}</tspan>
+      <tspan x="44" dy="22" fill="#94a3b8">}</tspan>
+      <tspan x="32" dy="22" fill="#94a3b8">}</tspan>
+      <tspan x="20" dy="22" fill="#94a3b8">}</tspan>
+    </text>
+  </g>
+
+  <!-- Bottom accent line -->
+  <rect y="626" width="1200" height="4" fill="url(#accent)"/>
+</svg>

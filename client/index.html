@@ -5,25 +5,224 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <title>SelfHeal — Self-Healing API Proxy for AI Agents</title>
-    <meta name="description" content="SelfHeal is a self-healing API proxy for AI agents. Automatic retries, error correction, and resilience for LLM-powered applications. Python SDK and npm package available." />
+    <meta name="description" content="API proxy that intercepts failed calls, analyzes errors with an LLM, and returns structured fix instructions your AI agents can act on." />
     <meta name="robots" content="index, follow" />
+    <meta name="author" content="Carson Roell" />
     <link rel="canonical" href="https://selfheal.dev/" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="SelfHeal — Self-Healing API Proxy for AI Agents" />
-    <meta property="og:description" content="Automatic retries, error correction, and resilience for LLM-powered applications." />
+    <meta property="og:description" content="API proxy that intercepts failed calls, analyzes errors with an LLM, and returns structured fix instructions your AI agents can act on." />
     <meta property="og:url" content="https://selfheal.dev/" />
     <meta property="og:site_name" content="SelfHeal" />
+    <meta property="og:image" content="https://selfheal.dev/og-image.png" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="SelfHeal — Self-Healing API Proxy for AI Agents" />
-    <meta name="twitter:description" content="Automatic retries, error correction, and resilience for LLM-powered applications." />
+    <meta name="twitter:description" content="API proxy that intercepts failed calls, analyzes errors with an LLM, and returns structured fix instructions your AI agents can act on." />
+    <meta name="twitter:image" content="https://selfheal.dev/og-image.png" />
+
+    <!-- JSON-LD: SoftwareApplication -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "SelfHeal",
+      "url": "https://selfheal.dev",
+      "description": "Self-healing API proxy for AI agents. Intercepts failed API calls, analyzes errors with an LLM, and returns structured fix instructions.",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Any",
+      "author": {
+        "@type": "Person",
+        "name": "Carson Roell",
+        "url": "https://freedomengineers.tech"
+      },
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "Hobby",
+          "price": "0",
+          "priceCurrency": "USD",
+          "description": "500 requests/month, LLM error analysis, API key management"
+        },
+        {
+          "@type": "Offer",
+          "name": "Pro",
+          "price": "29",
+          "priceCurrency": "USD",
+          "description": "10,000 requests/month, multiple API keys, usage analytics"
+        },
+        {
+          "@type": "Offer",
+          "name": "Agency",
+          "price": "99",
+          "priceCurrency": "USD",
+          "description": "50,000 requests/month, unlimited API keys, priority support"
+        }
+      ],
+      "datePublished": "2026-03-27",
+      "dateModified": "2026-03-30"
+    }
+    </script>
+
+    <!-- JSON-LD: FAQPage -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is SelfHeal?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "SelfHeal is an API proxy that sits between your AI agents and any third-party API. When a request fails, SelfHeal intercepts the error, analyzes it with an LLM, and returns structured fix instructions your agent can act on immediately — including whether to retry, what to change in the payload, and why it failed."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does SelfHeal work?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Your agent sends API calls through the SelfHeal proxy by setting the X-Destination-URL header. Successful responses (2xx/3xx) pass through with zero overhead. Failed responses (4xx/5xx) are intercepted, analyzed by an LLM, and returned with a structured JSON envelope containing retriability, error category, human-readable explanation, and a suggested payload diff."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does SelfHeal see my API keys or credentials?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Sensitive headers like Authorization, Cookie, and API keys are automatically stripped before any data reaches the LLM for analysis. Your credentials never leave the proxy layer."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does SelfHeal cost?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "SelfHeal has a free Hobby tier with 500 requests/month, a Pro tier at $29/month with 10,000 requests, and an Agency tier at $99/month with 50,000 requests. Successful pass-through requests are always free — credits are only consumed when the LLM is invoked on a failed request."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What languages and frameworks does SelfHeal support?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "SelfHeal provides official SDKs for Python (pip install graceful-fail) and Node.js/TypeScript (npm install graceful-fail). Both SDKs include LangChain and CrewAI integrations. You can also use SelfHeal with any HTTP client by proxying requests through the API endpoint."
+          }
+        }
+      ]
+    }
+    </script>
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!--
+        Static HTML for SEO / AI crawlers.
+        React hydrates over this on load. Content mirrors Home.tsx.
+      -->
+      <main>
+        <header>
+          <nav aria-label="Main navigation">
+            <a href="https://selfheal.dev">SelfHeal</a>
+            <a href="#features">Features</a>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#sdks">SDKs</a>
+            <a href="#pricing">Pricing</a>
+            <a href="/docs">Docs</a>
+            <a href="/status">Status</a>
+            <a href="/changelog">Changelog</a>
+          </nav>
+        </header>
+
+        <article>
+          <section>
+            <h1>The API proxy that teaches your agents how to fix their own mistakes</h1>
+            <p>SelfHeal intercepts failed API calls, analyzes the error with an LLM, and returns structured, actionable correction instructions — so your agents can self-heal and retry autonomously.</p>
+            <p>Install: <code>pip install graceful-fail</code> or <code>npm install graceful-fail</code></p>
+            <p>No credit card required. 500 requests/month free forever.</p>
+          </section>
+
+          <section>
+            <h2>Key stats</h2>
+            <ul>
+              <li>Less than 200ms average analysis latency</li>
+              <li>Zero credentials exposed — by design</li>
+              <li>100% pass-through transparency on successful requests</li>
+              <li>Free on successful requests — credits only used on failures</li>
+            </ul>
+          </section>
+
+          <section id="features">
+            <h2>Built for production AI workflows</h2>
+            <p>Every design decision optimized for autonomous agents running unsupervised at 3 AM.</p>
+            <ul>
+              <li><strong>Instant Error Intelligence</strong> — When your agent hits a 4xx or 5xx error, our LLM engine analyzes the exact payload and returns a precise, actionable fix — not a generic error message.</li>
+              <li><strong>Security-First Design</strong> — Sensitive headers (Authorization, Cookie, API keys) are stripped before any data reaches the LLM. Your credentials never leave the proxy layer.</li>
+              <li><strong>Zero-Overhead Pass-Through</strong> — Successful requests (2xx/3xx) are forwarded transparently with no latency overhead. You only pay when the LLM is actually invoked on a failed request.</li>
+              <li><strong>Agent-Native JSON Schema</strong> — Every intercepted error returns a structured JSON envelope with is_retriable, actionable_fix_for_agent, and suggested_payload_diff — designed for autonomous agent consumption.</li>
+              <li><strong>Full Observability</strong> — Track every request, intercepted error, credit usage, and success rate from your developer dashboard. Filter by API key, date, or error type.</li>
+              <li><strong>Tier-Based Rate Limiting</strong> — Hobby, Pro, and Agency tiers with monthly request limits. Upgrade anytime. Credits only consumed on failed requests that trigger LLM analysis.</li>
+            </ul>
+          </section>
+
+          <section id="how-it-works">
+            <h2>Drop-in integration</h2>
+            <p>Point your requests at the SelfHeal proxy, add a few headers, and you're live.</p>
+            <h3>How it works</h3>
+            <ol>
+              <li>Your agent sends API calls through the proxy. Replace the destination URL with the SelfHeal endpoint and set X-Destination-URL to point at the real API.</li>
+              <li>Successful responses pass through with zero overhead. 2xx and 3xx responses are returned verbatim. No credits consumed, no added latency.</li>
+              <li>Failed responses get LLM-analyzed. 4xx and 5xx errors are intercepted, analyzed, and returned with structured fix instructions including retriability, error category, and a suggested payload diff.</li>
+            </ol>
+          </section>
+
+          <section id="sdks">
+            <h2>SDKs for every stack</h2>
+            <p>Integrate in minutes with official SDKs for Python and Node.js. LangChain and CrewAI integrations included.</p>
+            <h3>Python SDK</h3>
+            <p>Install: <code>pip install 'graceful-fail[langchain]'</code></p>
+            <p>Available on <a href="https://pypi.org/project/graceful-fail/">PyPI</a>. Supports sync, async, LangChain, and CrewAI.</p>
+            <h3>Node.js / TypeScript SDK</h3>
+            <p>Install: <code>npm install graceful-fail</code></p>
+            <p>Available on <a href="https://www.npmjs.com/package/graceful-fail">npm</a>. Full TypeScript support, ESM and CJS.</p>
+          </section>
+
+          <section id="pricing">
+            <h2>Simple, usage-based pricing</h2>
+            <p>Credits only consumed when the LLM is invoked. Successful pass-through requests are always free.</p>
+            <ul>
+              <li><strong>Hobby — Free</strong>: 500 requests/month, LLM error analysis, API key management, request logs (7 days).</li>
+              <li><strong>Pro — $29/month</strong>: 10,000 requests/month, multiple API keys, 30-day logs, usage analytics.</li>
+              <li><strong>Agency — $99/month</strong>: 50,000 requests/month, unlimited API keys, 90-day logs, $0.005 per extra request, priority support.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>It's 3 AM. Your agent just hit a 422. Does it crash — or fix itself?</h2>
+            <p>Stop babysitting your AI workflows. SelfHeal gives your agents the intelligence to recover on their own.</p>
+            <a href="/dashboard">Get Started Free</a>
+          </section>
+        </article>
+
+        <footer>
+          <p>&copy; 2026 SelfHeal. Built for AI engineers.</p>
+          <nav aria-label="Footer navigation">
+            <a href="https://selfheal.dev">Website</a>
+            <a href="/docs">Documentation</a>
+            <a href="/status">Status</a>
+            <a href="/changelog">Changelog</a>
+            <a href="https://pypi.org/project/graceful-fail/">PyPI</a>
+            <a href="https://www.npmjs.com/package/graceful-fail">npm</a>
+            <a href="/terms">Terms</a>
+            <a href="/privacy">Privacy</a>
+          </nav>
+        </footer>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
     <script
       defer

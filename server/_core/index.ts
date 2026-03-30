@@ -11,8 +11,9 @@ import { proxyHandler } from "../proxyEngine";
 import { sentryWebhookHandler } from "../sentryWebhook";
 import { registerStripeWebhook } from "../stripeRouter";
 import { buildOpenApiSpec } from "../openApiSpec";
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, mkdirSync, writeFileSync } from "fs";
 import path from "path";
+import { runScan } from "../scanEngine";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -119,6 +120,29 @@ async function startServer() {
     const data = JSON.parse(readFileSync(auditPath, "utf-8"));
     res.setHeader("Cache-Control", "public, max-age=86400");
     res.json(data);
+  });
+
+  // Public scan endpoint — scans a GitHub repo for AI resilience issues
+  app.post("/api/scan", async (req, res) => {
+    const { repo } = req.body as { repo?: string };
+    if (!repo || !repo.includes("/")) {
+      res.status(400).json({ error: "Provide a repo in owner/repo format" });
+      return;
+    }
+    // Sanitize
+    const clean = repo.replace(/[^a-zA-Z0-9/_.-]/g, "").slice(0, 100);
+    try {
+      const result = await runScan(clean);
+      // Cache the result so it gets a permalink at /audit/<slug>
+      const auditDir = path.resolve(import.meta.dirname, "..", "..", "data", "audits");
+      mkdirSync(auditDir, { recursive: true });
+      writeFileSync(path.resolve(auditDir, `${result.slug}.json`), JSON.stringify(result, null, 2), "utf-8");
+      res.json(result);
+    } catch (err: any) {
+      const msg = err.message ?? "Scan failed";
+      const status = msg.includes("Not Found") ? 404 : msg.includes("No AI") ? 422 : 500;
+      res.status(status).json({ error: msg });
+    }
   });
 
   // tRPC API

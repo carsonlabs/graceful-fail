@@ -12,9 +12,6 @@ import {
   Webhook,
   FlaskConical,
   BookOpen,
-  Activity,
-  BookMarked,
-  Share2,
   Sun,
   Moon,
   Slack,
@@ -32,37 +29,34 @@ import { useIsMobile } from "@/hooks/useMobile";
 
 const NAV_SECTIONS = [
   {
-    label: "Proxy",
+    label: "Core",
     items: [
-      { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-      { href: "/dashboard/keys", label: "API Keys", icon: Key },
+      { href: "/dashboard/playground", label: "Try It", icon: FlaskConical },
       { href: "/dashboard/logs", label: "Request Logs", icon: List },
-      { href: "/dashboard/usage", label: "Usage & Analytics", icon: BarChart2 },
-      { href: "/dashboard/playground", label: "Playground", icon: FlaskConical },
+      { href: "/dashboard/keys", label: "API Keys", icon: Key },
+      { href: "/docs", label: "API Docs", icon: BookOpen },
     ],
   },
   {
-    label: "Resources",
+    label: "Analytics",
     items: [
-      { href: "/docs", label: "API Docs", icon: BookOpen },
-      { href: "/status", label: "System Status", icon: Activity },
-      { href: "/changelog", label: "Changelog", icon: BookMarked },
+      { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+      { href: "/dashboard/usage", label: "Usage", icon: BarChart2 },
+    ],
+  },
+  {
+    label: "Integrations",
+    items: [
+      { href: "/dashboard/webhooks", label: "Webhooks", icon: Webhook },
+      { href: "/dashboard/integrations/slack", label: "Slack", icon: Slack },
+      { href: "/dashboard/integrations/sentry", label: "Sentry", icon: Shield },
+      { href: "/dashboard/digest", label: "Weekly Digest", icon: Mail },
     ],
   },
   {
     label: "Account",
     items: [
-      { href: "/dashboard/referral", label: "Referral Program", icon: Share2 },
       { href: "/dashboard/billing", label: "Billing", icon: CreditCard },
-    ],
-  },
-  {
-    label: "Settings",
-    items: [
-      { href: "/dashboard/webhooks", label: "Webhooks", icon: Webhook },
-      { href: "/dashboard/integrations/slack", label: "Slack Alerts", icon: Slack },
-      { href: "/dashboard/integrations/sentry", label: "Sentry", icon: Shield },
-      { href: "/dashboard/digest", label: "Weekly Digest", icon: Mail },
     ],
   },
 ];

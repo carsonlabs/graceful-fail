@@ -84,7 +84,7 @@ const response = await fetch("https://api.crm.com/contacts", {
 });
 // Returns 422 — agent enters doom loop
 
-// After: Route through SelfHeal
+// After: Route through SelfHeal — it fixes AND retries automatically
 const response = await fetch("https://selfheal.dev/api/proxy", {
   method: "POST",
   headers: {
@@ -95,17 +95,13 @@ const response = await fetch("https://selfheal.dev/api/proxy", {
   body: JSON.stringify({ name: "John Doe" })
 });
 
-// Returns structured fix:
+// SelfHeal auto-fixes the payload and retries — you get the success response:
 // {
-//   "graceful_fail_intercepted": true,
-//   "error_analysis": {
-//     "is_retriable": true,
-//     "actionable_fix_for_agent": "Remove 'name' field. Add 'first_name'
-//       and 'last_name' as separate string fields, then retry.",
-//     "suggested_payload_diff": {
-//       "remove": ["name"],
-//       "add": { "first_name": "string", "last_name": "string" }
-//     }
+//   "selfheal_auto_fixed": true,
+//   "data": { "id": 42, "first_name": "John", "last_name": "Doe" },
+//   "applied_diff": {
+//     "remove": ["name"],
+//     "add": { "first_name": "John", "last_name": "Doe" }
 //   }
 // }`;
 

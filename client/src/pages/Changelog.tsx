@@ -25,9 +25,22 @@ const TYPE_CONFIG: Record<ChangeType, { label: string; color: string; icon: Reac
 
 const RELEASES: Release[] = [
   {
-    version: "1.5.1",
+    version: "2.0.0",
     date: "March 29, 2026",
     tag: "latest",
+    summary: "Auto-retry with fixed payload and Sentry integration — SelfHeal now fixes and retries failed requests automatically.",
+    changes: [
+      { type: "feature", text: "Auto-retry with fixed payload — when the LLM diagnoses a fixable error, SelfHeal applies the suggested diff and retries the request automatically. Successful retries return the API response directly with a selfheal_auto_fixed flag." },
+      { type: "feature", text: "Sentry inbound webhook — connect your Sentry project to SelfHeal and get LLM-powered analysis for every new exception, including root cause and actionable fix" },
+      { type: "feature", text: "Slack alert integration — receive real-time notifications on non-retriable errors in your Slack channel" },
+      { type: "feature", text: "X-Auto-Retry header — opt out of auto-retry per request with X-Auto-Retry: false" },
+      { type: "improvement", text: "Request logs now track auto-retry attempts, retry status codes, and success/failure" },
+      { type: "security", text: "SSRF protection expanded to block all RFC 1918 ranges, link-local, and IPv6 loopback addresses" },
+    ],
+  },
+  {
+    version: "1.5.1",
+    date: "March 29, 2026",
     summary: "API key management and polish: inline rename, auto-populated code snippets, and billing cleanup.",
     changes: [
       { type: "feature", text: "Inline API key rename — hover any key name to edit it in place (Enter to save, Escape to cancel)" },

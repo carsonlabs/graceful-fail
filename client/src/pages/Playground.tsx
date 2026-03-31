@@ -33,6 +33,26 @@ import { useEffect } from "react";
 
 const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 
+const DEMO_RESULT: PlaygroundResult = {
+  graceful_fail_intercepted: true,
+  original_status_code: 422,
+  destination_url: "https://httpbin.org/status/422",
+  error_analysis: {
+    is_retriable: false,
+    human_readable_explanation:
+      "The API returned a 422 Unprocessable Entity error. The request body is missing the required 'email' field that the endpoint expects for user creation.",
+    actionable_fix_for_agent:
+      "Add the required 'email' field to the request body. Example: { \"name\": \"John Doe\", \"email\": \"john@example.com\" }",
+    suggested_payload_diff: {
+      remove: [],
+      add: { email: "string (required)" },
+      modify: {},
+    },
+    error_category: "validation_error",
+  },
+  meta: { credits_used: 1, duration_ms: 847, tier: "hobby" },
+};
+
 interface PlaygroundResult {
   graceful_fail_intercepted: boolean;
   original_status_code: number;
@@ -107,6 +127,7 @@ export default function Playground() {
   const [apiKey, setApiKey] = useState("");
   const [result, setResult] = useState<PlaygroundResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showingDemo, setShowingDemo] = useState(true);
   // Webhook dry-run state
   const [webhookUrl, setWebhookUrl] = useState("");
   const [webhookPayload, setWebhookPayload] = useState(() =>
@@ -146,6 +167,7 @@ export default function Playground() {
 
     setIsLoading(true);
     setResult(null);
+    setShowingDemo(false);
     const start = Date.now();
 
     try {
@@ -268,7 +290,7 @@ export default function Playground() {
               Playground
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Test the proxy or fire a webhook dry-run directly from the browser
+              See SelfHeal catch and fix a broken API call in real-time
             </p>
           </div>
           {activeTab === "proxy" && (
@@ -540,10 +562,53 @@ export default function Playground() {
                   </div>
                 )}
 
-                {!isLoading && !result && (
+                {!isLoading && !result && !showingDemo && (
                   <div className="flex flex-col items-center justify-center py-20 gap-3">
                     <FlaskConical className="w-10 h-10 text-muted-foreground/30" />
                     <p className="text-sm text-muted-foreground">Run a request to see the response</p>
+                  </div>
+                )}
+
+                {!isLoading && !result && showingDemo && (
+                  <div className="space-y-4">
+                    <div className="rounded-lg bg-primary/5 border border-primary/20 px-4 py-2.5 flex items-center justify-between">
+                      <p className="text-xs text-primary font-medium">Example — this is what SelfHeal returns when it catches an error</p>
+                      <button
+                        onClick={() => setShowingDemo(false)}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3">
+                      <XCircle className="w-5 h-5 text-red-400 shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-red-400">
+                          HTTP {DEMO_RESULT.original_status_code} — Non-Retriable Error
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Category: validation error · {DEMO_RESULT.meta?.credits_used} credit used · {DEMO_RESULT.meta?.duration_ms}ms
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">What went wrong</p>
+                      <p className="text-sm text-foreground leading-relaxed">{DEMO_RESULT.error_analysis!.human_readable_explanation}</p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Actionable Fix for Agent</p>
+                      <div className="rounded-lg bg-primary/5 border border-primary/20 px-4 py-3">
+                        <p className="text-sm text-primary font-medium leading-relaxed">{DEMO_RESULT.error_analysis!.actionable_fix_for_agent}</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Suggested Payload Changes</p>
+                      <DiffViewer diff={DEMO_RESULT.error_analysis!.suggested_payload_diff} />
+                    </div>
                   </div>
                 )}
 

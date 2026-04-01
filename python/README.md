@@ -1,5 +1,10 @@
 # graceful-fail
 
+[![PyPI](https://img.shields.io/pypi/v/graceful-fail)](https://pypi.org/project/graceful-fail/)
+[![npm](https://img.shields.io/npm/v/graceful-fail)](https://www.npmjs.com/package/graceful-fail)
+
+> Part of [SelfHeal](https://selfheal.dev) — autonomous error recovery for AI agents.
+
 **Self-healing API proxy for AI agents.** Route your HTTP calls through Graceful Fail and get structured, LLM-powered fix instructions when APIs return errors.
 
 Instead of your agent crashing on a `422` or retrying a `503` blindly, it gets back:

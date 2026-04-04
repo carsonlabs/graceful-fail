@@ -14,6 +14,7 @@ import { buildOpenApiSpec } from "../openApiSpec";
 import { existsSync, readFileSync, mkdirSync, writeFileSync } from "fs";
 import path from "path";
 import { runScan } from "../scanEngine";
+import { rouletteRouter } from "../rouletteRouter";
 
 // Resolve project root — works from both server/_core/ (dev) and dist/ (prod)
 const PROJECT_ROOT = process.env.NODE_ENV === "production"
@@ -58,6 +59,9 @@ async function startServer() {
 
   // Sentry inbound webhook — receives events from Sentry
   app.post("/api/webhooks/sentry", sentryWebhookHandler);
+
+  // API Roulette — chaos testing endpoint
+  app.use(rouletteRouter);
 
   // Badge — public, cacheable
   app.get("/badge.svg", (_req, res) => {

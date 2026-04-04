@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/useMobile";
+import Tamagotchi from "@/components/Tamagotchi";
 
 const NAV_SECTIONS = [
   {
@@ -276,6 +277,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+      <Tamagotchi />
     </div>
   );
 }

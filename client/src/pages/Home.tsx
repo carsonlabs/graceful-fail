@@ -4,46 +4,62 @@ import { getLoginUrl } from "@/const";
 import { Link } from "wouter";
 import {
   Zap, Shield, BarChart2, Code2, ArrowRight, CheckCircle2,
-  AlertTriangle, RefreshCw, Lock, Terminal, Sun, Moon
+  AlertTriangle, RefreshCw, Lock, Terminal, Sun, Moon,
+  Github, ExternalLink, Star, ChevronRight, Sparkles,
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useState, useEffect } from "react";
+
+// ─── Data ────────────────────────────────────────────────────────────
 
 const FEATURES = [
   {
     icon: Zap,
     title: "Instant Error Intelligence",
     description:
-      "When your agent hits a 4xx or 5xx error, our LLM engine analyzes the exact payload and returns a precise, actionable fix — not a generic error message.",
+      "When your agent hits a 4xx or 5xx, our LLM analyzes the exact payload and returns a precise, actionable fix — not a generic error message.",
+    color: "text-amber-400",
+    bg: "bg-amber-500/10",
   },
   {
     icon: Shield,
     title: "Security-First Design",
     description:
       "Sensitive headers (Authorization, Cookie, API keys) are stripped before any data reaches the LLM. Your credentials never leave the proxy layer.",
+    color: "text-blue-400",
+    bg: "bg-blue-500/10",
   },
   {
     icon: RefreshCw,
-    title: "Zero-Overhead Pass-Through",
+    title: "Auto-Retry & Self-Heal",
     description:
-      "Successful requests (2xx/3xx) are forwarded transparently with no latency overhead. You only pay when the LLM is actually invoked on a failed request.",
+      "Retriable errors are automatically fixed and retried. Your agent gets the success response as if the error never happened.",
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10",
   },
   {
     icon: Code2,
     title: "Agent-Native JSON Schema",
     description:
-      "Every intercepted error returns a structured JSON envelope with is_retriable, actionable_fix_for_agent, and suggested_payload_diff — designed for autonomous agent consumption.",
+      "Every intercepted error returns a structured envelope with is_retriable, actionable_fix_for_agent, and suggested_payload_diff.",
+    color: "text-purple-400",
+    bg: "bg-purple-500/10",
   },
   {
     icon: BarChart2,
     title: "Full Observability",
     description:
-      "Track every request, intercepted error, credit usage, and success rate from your developer dashboard. Filter by API key, date, or error type.",
+      "Track every request, intercepted error, credit usage, and success rate. Filter by API key, date, or error type.",
+    color: "text-cyan-400",
+    bg: "bg-cyan-500/10",
   },
   {
     icon: Lock,
-    title: "Tier-Based Rate Limiting",
+    title: "Usage-Based Billing",
     description:
-      "Hobby, Pro, and Agency tiers with monthly request limits. Upgrade anytime. Credits only consumed on failed requests that trigger LLM analysis.",
+      "Credits only consumed when the LLM is invoked on a failure. Successful pass-through requests are always free.",
+    color: "text-rose-400",
+    bg: "bg-rose-500/10",
   },
 ];
 
@@ -60,7 +76,7 @@ const PRICING = [
   {
     name: "Pro",
     price: "$149",
-    period: "/month",
+    period: "/mo",
     limit: "10,000 requests/month",
     features: ["10,000 proxied requests", "LLM error analysis", "Multiple API keys", "Request logs (30 days)", "Usage analytics", "Email support"],
     cta: "Get Pro",
@@ -69,7 +85,7 @@ const PRICING = [
   {
     name: "Agency",
     price: "$349",
-    period: "/month",
+    period: "/mo",
     limit: "50,000 requests/month",
     features: ["50,000 proxied requests", "$0.003 per extra request", "Unlimited API keys", "Request logs (90 days)", "Full analytics", "Priority support"],
     cta: "Get Agency",
@@ -77,15 +93,41 @@ const PRICING = [
   },
 ];
 
-const CODE_EXAMPLE = `// Before: Your agent crashes on API errors
-const response = await fetch("https://api.crm.com/contacts", {
-  method: "POST",
-  body: JSON.stringify({ name: "John Doe" }) // ❌ Wrong field
-});
-// Returns 422 — agent enters doom loop
+const STEPS = [
+  {
+    num: "01",
+    title: "Route through SelfHeal",
+    desc: "Replace the destination URL with the SelfHeal proxy endpoint. Set X-Destination-URL to point at the real API.",
+  },
+  {
+    num: "02",
+    title: "Success passes through",
+    desc: "2xx and 3xx responses are returned verbatim. Zero overhead, zero credits consumed.",
+  },
+  {
+    num: "03",
+    title: "Failures get healed",
+    desc: "4xx/5xx errors are intercepted, analyzed by an LLM, auto-retried if possible, and returned with structured fix instructions.",
+  },
+];
 
-// After: Route through SelfHeal — it fixes AND retries automatically
-const response = await fetch("https://selfheal.dev/api/proxy", {
+const LOGOS = [
+  { name: "OpenAI", text: "OpenAI" },
+  { name: "Stripe", text: "Stripe" },
+  { name: "GitHub", text: "GitHub" },
+  { name: "Twilio", text: "Twilio" },
+  { name: "Slack", text: "Slack" },
+  { name: "HubSpot", text: "HubSpot" },
+];
+
+const CODE_BEFORE = `const res = await fetch("https://api.crm.com/contacts", {
+  method: "POST",
+  body: JSON.stringify({ name: "John Doe" })
+});
+// 422 Unprocessable Entity
+// Agent crashes. You get paged.`;
+
+const CODE_AFTER = `const res = await fetch("https://selfheal.dev/api/proxy", {
   method: "POST",
   headers: {
     "Authorization": "Bearer gf_your_key",
@@ -94,61 +136,96 @@ const response = await fetch("https://selfheal.dev/api/proxy", {
   },
   body: JSON.stringify({ name: "John Doe" })
 });
+// SelfHeal auto-fixes { name } → { first_name, last_name }
+// Retries with corrected payload → 201 Created
+// Your agent never even knew it broke.`;
 
-// SelfHeal auto-fixes the payload and retries — you get the success response:
-// {
-//   "selfheal_auto_fixed": true,
-//   "data": { "id": 42, "first_name": "John", "last_name": "Doe" },
-//   "applied_diff": {
-//     "remove": ["name"],
-//     "add": { "first_name": "John", "last_name": "Doe" }
-//   }
-// }`;
+// ─── Animated counter ────────────────────────────────────────────────
+
+function AnimatedStat({ value, label }: { value: string; label: string }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 100);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div className={`transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}>
+      <div className="text-3xl md:text-4xl font-bold text-primary mb-1 tabular-nums">{value}</div>
+      <div className="text-sm text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+// ��── Component ───────────────────────────────────────────────────────
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const ctaUrl = isAuthenticated ? "/dashboard" : getLoginUrl();
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Nav */}
-      <header className="border-b border-border sticky top-0 z-50 bg-background/80 backdrop-blur-sm">
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+      {/* ── Nav ── */}
+      <header className="border-b border-border/50 sticky top-0 z-50 bg-background/80 backdrop-blur-xl">
         <div className="container flex items-center justify-between h-16 gap-8">
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
-              <Zap className="w-4 h-4 text-primary-foreground" />
+          <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_12px_oklch(0.75_0.18_145_/_0.3)] group-hover:shadow-[0_0_20px_oklch(0.75_0.18_145_/_0.5)] transition-shadow">
+              <Zap className="w-4.5 h-4.5 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-sm tracking-tight">SelfHeal</span>
-          </div>
-          <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground whitespace-nowrap">
-            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-            <a href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</a>
-            <a href="#sdks" className="hover:text-foreground transition-colors">SDKs</a>
-            <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
-            <Link href="/docs" className="hover:text-foreground transition-colors">Docs</Link>
-            <Link href="/status" className="hover:text-foreground transition-colors">Status</Link>
-            <Link href="/changelog" className="hover:text-foreground transition-colors">Changelog</Link>
+            <span className="font-bold text-base tracking-tight">SelfHeal</span>
+          </Link>
+          <nav className="hidden md:flex items-center gap-1 text-sm">
+            {[
+              { href: "#features", label: "Features" },
+              { href: "#how-it-works", label: "How It Works" },
+              { href: "#sdks", label: "SDKs" },
+              { href: "#pricing", label: "Pricing" },
+            ].map(({ href, label }) => (
+              <a
+                key={href}
+                href={href}
+                className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              >
+                {label}
+              </a>
+            ))}
+            <div className="w-px h-4 bg-border mx-1" />
+            <Link href="/docs" className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
+              Docs
+            </Link>
+            <Link href="/status" className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
+              Status
+            </Link>
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {toggleTheme && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={toggleTheme}
                 className="w-8 h-8 p-0 text-muted-foreground hover:text-foreground"
-                title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               >
                 {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </Button>
             )}
+            <a
+              href="https://github.com/carsonlabs/graceful-fail"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden md:flex"
+            >
+              <Button variant="ghost" size="sm" className="w-8 h-8 p-0 text-muted-foreground hover:text-foreground">
+                <Github className="w-4 h-4" />
+              </Button>
+            </a>
             {isAuthenticated ? (
               <Link href="/dashboard">
-                <Button size="sm" className="gap-2">
+                <Button size="sm" className="gap-1.5 shadow-[0_0_12px_oklch(0.75_0.18_145_/_0.25)]">
                   Dashboard <ArrowRight className="w-3.5 h-3.5" />
                 </Button>
               </Link>
             ) : (
-              <Button size="sm" className="gap-2" onClick={() => (window.location.href = getLoginUrl())}>
+              <Button size="sm" className="gap-1.5 shadow-[0_0_12px_oklch(0.75_0.18_145_/_0.25)]" onClick={() => (window.location.href = ctaUrl)}>
                 Get Started <ArrowRight className="w-3.5 h-3.5" />
               </Button>
             )}
@@ -156,89 +233,114 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="py-24 md:py-32">
-        <div className="container text-center max-w-4xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-medium mb-8">
-            <AlertTriangle className="w-3.5 h-3.5" />
-            Stop your AI agents from breaking on API errors
+      {/* ── Hero ── */}
+      <section className="relative py-28 md:py-40 overflow-hidden">
+        {/* Background glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-primary/[0.07] rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_oklch(0.75_0.18_145_/_0.04)_0%,_transparent_60%)] pointer-events-none" />
+
+        <div className="container relative text-center max-w-4xl mx-auto">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-medium mb-10 backdrop-blur-sm">
+            <Sparkles className="w-3.5 h-3.5" />
+            Now with auto-retry — errors fix themselves
+            <ChevronRight className="w-3 h-3 opacity-60" />
           </div>
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-foreground mb-6 leading-tight">
-            The API proxy that teaches{" "}
-            <span className="text-primary">your agents</span>{" "}
-            how to fix their own mistakes
+
+          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-foreground mb-8 leading-[1.1]">
+            Your agents break.{" "}
+            <br className="hidden sm:block" />
+            <span className="text-primary">SelfHeal fixes them.</span>
           </h1>
-          <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-            SelfHeal intercepts failed API calls, analyzes the error with an LLM, and returns
-            structured, actionable correction instructions — so your agents can self-heal and retry
-            autonomously.
+
+          <p className="text-lg md:text-xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed">
+            An API proxy that intercepts failed calls, analyzes errors with an LLM,
+            and auto-retries with corrected payloads — so your AI agents recover autonomously.
           </p>
-          {/* SDK install badges */}
-          <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
-            <code className="text-xs font-mono bg-card border border-border rounded-lg px-4 py-2 text-muted-foreground">
-              pip install <span className="text-primary">graceful-fail</span>
+
+          {/* Install badges */}
+          <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
+            <code className="text-sm font-mono bg-card/80 backdrop-blur border border-border rounded-lg px-5 py-2.5 text-muted-foreground select-all hover:border-primary/40 transition-colors cursor-text">
+              pip install <span className="text-primary font-medium">graceful-fail</span>
             </code>
-            <code className="text-xs font-mono bg-card border border-border rounded-lg px-4 py-2 text-muted-foreground">
-              npm install <span className="text-primary">graceful-fail</span>
+            <code className="text-sm font-mono bg-card/80 backdrop-blur border border-border rounded-lg px-5 py-2.5 text-muted-foreground select-all hover:border-primary/40 transition-colors cursor-text">
+              npm install <span className="text-primary font-medium">graceful-fail</span>
             </code>
           </div>
+
+          {/* CTA */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button
               size="lg"
-              className="gap-2 text-base px-8 shadow-[0_0_20px_oklch(0.75_0.18_145_/_0.35)]"
-              onClick={() => (window.location.href = isAuthenticated ? "/dashboard" : getLoginUrl())}
+              className="gap-2.5 text-base px-10 h-12 shadow-[0_0_30px_oklch(0.75_0.18_145_/_0.35)] hover:shadow-[0_0_40px_oklch(0.75_0.18_145_/_0.5)] transition-shadow"
+              onClick={() => (window.location.href = ctaUrl)}
             >
-              Start for Free <ArrowRight className="w-4 h-4" />
+              Start for Free <ArrowRight className="w-4.5 h-4.5" />
             </Button>
-            <a href="#how-it-works">
-              <Button variant="outline" size="lg" className="gap-2 text-base px-8">
-                <Terminal className="w-4 h-4" />
-                See How It Works
+            <Link href="/dashboard/playground">
+              <Button variant="outline" size="lg" className="gap-2.5 text-base px-10 h-12 border-border/60">
+                <Terminal className="w-4.5 h-4.5" />
+                Live Playground
               </Button>
-            </a>
+            </Link>
           </div>
-          <p className="text-xs text-muted-foreground mt-4">No credit card required · 500 requests/month free forever</p>
+
+          <p className="text-xs text-muted-foreground/60 mt-5">
+            No credit card required &middot; 500 requests/month free forever &middot; GitHub login
+          </p>
         </div>
       </section>
 
-      {/* Stats bar */}
-      <section className="border-y border-border bg-card/50 py-8">
+      {/* ── Social Proof ── */}
+      <section className="border-y border-border/50 bg-card/30 py-6 overflow-hidden">
         <div className="container">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            {[
-              { value: "< 200ms", label: "Avg. analysis latency" },
-              { value: "Zero", label: "Credentials exposed — by design" },
-              { value: "100%", label: "Pass-through transparency" },
-              { value: "Free", label: "On successful requests" },
-            ].map(({ value, label }) => (
-              <div key={label}>
-                <div className="text-2xl font-bold text-primary mb-1">{value}</div>
-                <div className="text-sm text-muted-foreground">{label}</div>
-              </div>
+          <p className="text-center text-xs text-muted-foreground/50 uppercase tracking-widest font-medium mb-5">
+            Works with any API your agents call
+          </p>
+          <div className="flex items-center justify-center gap-10 md:gap-16 flex-wrap">
+            {LOGOS.map(({ name, text }) => (
+              <span key={name} className="text-sm font-semibold text-muted-foreground/30 tracking-wide">
+                {text}
+              </span>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="py-24">
+      {/* ── Stats bar ── */}
+      <section className="py-16 md:py-20">
         <div className="container">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Built for production AI workflows</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 text-center max-w-4xl mx-auto">
+            <AnimatedStat value="< 200ms" label="Avg. analysis latency" />
+            <AnimatedStat value="Zero" label="Credentials exposed" />
+            <AnimatedStat value="100%" label="Pass-through on success" />
+            <AnimatedStat value="$0" label="For successful requests" />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Features ── */}
+      <section id="features" className="py-24 md:py-32">
+        <div className="container">
+          <div className="text-center mb-20">
+            <p className="text-xs text-primary font-semibold uppercase tracking-widest mb-4">Features</p>
+            <h2 className="text-3xl md:text-5xl font-bold mb-5 tracking-tight">
+              Built for production AI workflows
+            </h2>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
               Every design decision optimized for autonomous agents running unsupervised at 3 AM.
             </p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FEATURES.map(({ icon: Icon, title, description }) => (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-6xl mx-auto">
+            {FEATURES.map(({ icon: Icon, title, description, color, bg }) => (
               <div
                 key={title}
-                className="p-6 rounded-xl border border-border bg-card hover:border-primary/40 transition-colors group"
+                className="group relative p-6 rounded-2xl border border-border/60 bg-card/50 hover:bg-card hover:border-border transition-all duration-300"
               >
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                  <Icon className="w-5 h-5 text-primary" />
+                <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300`}>
+                  <Icon className={`w-5 h-5 ${color}`} />
                 </div>
-                <h3 className="font-semibold text-foreground mb-2">{title}</h3>
+                <h3 className="font-semibold text-foreground mb-2 text-[15px]">{title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
               </div>
             ))}
@@ -246,54 +348,96 @@ export default function Home() {
         </div>
       </section>
 
-      {/* How it works */}
-      <section id="how-it-works" className="py-24 bg-card/30 border-y border-border">
+      {/* ── How it works ── */}
+      <section id="how-it-works" className="py-24 md:py-32 bg-card/20 border-y border-border/50">
         <div className="container">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Drop-in integration</h2>
+          <div className="text-center mb-20">
+            <p className="text-xs text-primary font-semibold uppercase tracking-widest mb-4">Integration</p>
+            <h2 className="text-3xl md:text-5xl font-bold mb-5 tracking-tight">
+              Three lines. That's it.
+            </h2>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              Point your requests at the SelfHeal proxy, add a few headers, and you're live.
+              Point your requests at SelfHeal, add a header, and go to sleep.
             </p>
           </div>
-          <div className="max-w-3xl mx-auto">
-            <div className="rounded-xl border border-border bg-background overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card">
-                <div className="w-3 h-3 rounded-full bg-red-500/60" />
-                <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
-                <div className="w-3 h-3 rounded-full bg-green-500/60" />
-                <span className="ml-2 text-xs text-muted-foreground font-mono">agent.ts</span>
+
+          {/* Steps */}
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-16">
+            {STEPS.map(({ num, title, desc }) => (
+              <div key={num} className="relative p-6 rounded-2xl border border-border/60 bg-card/50">
+                <div className="text-4xl font-black text-primary/15 mb-3 leading-none">{num}</div>
+                <h3 className="font-semibold text-foreground mb-2">{title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
               </div>
-              <pre className="p-5 text-xs font-mono text-foreground/90 overflow-x-auto leading-relaxed whitespace-pre-wrap">
-                {CODE_EXAMPLE}
+            ))}
+          </div>
+
+          {/* Code comparison */}
+          <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-5">
+            {/* Before */}
+            <div className="rounded-2xl border border-red-500/20 bg-background overflow-hidden">
+              <div className="flex items-center gap-2 px-5 py-3.5 border-b border-border/50 bg-card/50">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-red-500/40" />
+                  <div className="w-3 h-3 rounded-full bg-muted-foreground/20" />
+                  <div className="w-3 h-3 rounded-full bg-muted-foreground/20" />
+                </div>
+                <span className="ml-2 text-xs text-red-400/80 font-mono font-medium">before.ts</span>
+                <span className="ml-auto text-[10px] text-red-400/60 font-medium uppercase tracking-wide">Without SelfHeal</span>
+              </div>
+              <pre className="p-5 text-[13px] font-mono text-foreground/80 overflow-x-auto leading-relaxed whitespace-pre-wrap">
+                {CODE_BEFORE}
+              </pre>
+            </div>
+
+            {/* After */}
+            <div className="rounded-2xl border border-emerald-500/20 bg-background overflow-hidden">
+              <div className="flex items-center gap-2 px-5 py-3.5 border-b border-border/50 bg-card/50">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-emerald-500/40" />
+                  <div className="w-3 h-3 rounded-full bg-muted-foreground/20" />
+                  <div className="w-3 h-3 rounded-full bg-muted-foreground/20" />
+                </div>
+                <span className="ml-2 text-xs text-emerald-400/80 font-mono font-medium">after.ts</span>
+                <span className="ml-auto text-[10px] text-emerald-400/60 font-medium uppercase tracking-wide">With SelfHeal</span>
+              </div>
+              <pre className="p-5 text-[13px] font-mono text-foreground/80 overflow-x-auto leading-relaxed whitespace-pre-wrap">
+                {CODE_AFTER}
               </pre>
             </div>
           </div>
         </div>
       </section>
 
-      {/* SDKs */}
-      <section id="sdks" className="py-24">
+      {/* ── SDKs ── */}
+      <section id="sdks" className="py-24 md:py-32">
         <div className="container">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">SDKs for every stack</h2>
+          <div className="text-center mb-20">
+            <p className="text-xs text-primary font-semibold uppercase tracking-widest mb-4">SDKs</p>
+            <h2 className="text-3xl md:text-5xl font-bold mb-5 tracking-tight">
+              First-class SDK support
+            </h2>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              Integrate in minutes with official SDKs for Python and Node.js. LangChain and CrewAI integrations included.
+              Official SDKs for Python and Node.js. LangChain and CrewAI integrations included.
             </p>
           </div>
           <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {/* Python */}
-            <div className="rounded-xl border border-border bg-card p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+            <div className="rounded-2xl border border-border/60 bg-card/50 p-7 hover:border-border transition-colors">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-11 h-11 rounded-xl bg-blue-500/10 flex items-center justify-center">
                   <span className="text-blue-400 font-bold text-sm">Py</span>
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Python SDK</h3>
-                  <p className="text-xs text-muted-foreground">PyPI: graceful-fail</p>
+                  <a href="https://pypi.org/project/graceful-fail/" target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+                    pypi.org/project/graceful-fail <ExternalLink className="w-3 h-3" />
+                  </a>
                 </div>
               </div>
-              <div className="rounded-lg bg-[#0d1117] border border-border p-4 mb-4">
-                <pre className="text-xs font-mono text-[#e6edf3] leading-relaxed">{`pip install 'graceful-fail[langchain]'
+              <div className="rounded-xl bg-[#0d1117] border border-[#30363d] p-5 mb-5">
+                <pre className="text-[13px] font-mono text-[#e6edf3] leading-relaxed">{`pip install 'graceful-fail[langchain]'
 
 from graceful_fail import GracefulFail
 
@@ -301,90 +445,99 @@ gf = GracefulFail(api_key="gf_your_key")
 resp = gf.post(url, json=payload)
 
 if resp.intercepted:
-    print(resp.error_analysis.actionable_fix_for_agent)`}</pre>
+    print(resp.fix_for_agent)`}</pre>
               </div>
               <div className="flex flex-wrap gap-2">
-                <span className="text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-0.5">LangChain</span>
-                <span className="text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-0.5">CrewAI</span>
-                <span className="text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-0.5">Async</span>
+                {["LangChain", "CrewAI", "Async", "Type hints"].map((tag) => (
+                  <span key={tag} className="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full px-3 py-1">{tag}</span>
+                ))}
               </div>
             </div>
             {/* Node.js */}
-            <div className="rounded-xl border border-border bg-card p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+            <div className="rounded-2xl border border-border/60 bg-card/50 p-7 hover:border-border transition-colors">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center">
                   <span className="text-emerald-400 font-bold text-sm">JS</span>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-foreground">Node.js / TypeScript SDK</h3>
-                  <p className="text-xs text-muted-foreground">npm: graceful-fail</p>
+                  <h3 className="font-semibold text-foreground">Node.js / TypeScript</h3>
+                  <a href="https://www.npmjs.com/package/graceful-fail" target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+                    npmjs.com/package/graceful-fail <ExternalLink className="w-3 h-3" />
+                  </a>
                 </div>
               </div>
-              <div className="rounded-lg bg-[#0d1117] border border-border p-4 mb-4">
-                <pre className="text-xs font-mono text-[#e6edf3] leading-relaxed">{`npm install graceful-fail
+              <div className="rounded-xl bg-[#0d1117] border border-[#30363d] p-5 mb-5">
+                <pre className="text-[13px] font-mono text-[#e6edf3] leading-relaxed">{`npm install graceful-fail
 
 import { GracefulFail } from "graceful-fail";
 
-const gf = new GracefulFail({ apiKey: "gf_your_key" });
+const gf = new GracefulFail({ apiKey: "gf_..." });
 const resp = await gf.post(url, { json: payload });
 
 if (resp.intercepted)
-  console.log(resp.errorAnalysis.actionable_fix_for_agent);`}</pre>
+  console.log(resp.fixForAgent);`}</pre>
               </div>
               <div className="flex flex-wrap gap-2">
-                <span className="text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-0.5">LangChain.js</span>
-                <span className="text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-0.5">TypeScript</span>
-                <span className="text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-0.5">ESM + CJS</span>
+                {["LangChain.js", "TypeScript", "ESM + CJS", "Fetch API"].map((tag) => (
+                  <span key={tag} className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full px-3 py-1">{tag}</span>
+                ))}
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="py-24">
+      {/* ── Pricing ── */}
+      <section id="pricing" className="py-24 md:py-32 bg-card/20 border-y border-border/50">
         <div className="container">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Simple, usage-based pricing</h2>
+          <div className="text-center mb-20">
+            <p className="text-xs text-primary font-semibold uppercase tracking-widest mb-4">Pricing</p>
+            <h2 className="text-3xl md:text-5xl font-bold mb-5 tracking-tight">
+              Simple, predictable pricing
+            </h2>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              Credits only consumed when the LLM is invoked. Successful pass-through requests are always free.
+              Credits only consumed on failures. Pass-through requests are always free.
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
             {PRICING.map(({ name, price, period, limit, features, cta, highlight }) => (
               <div
                 key={name}
-                className={`rounded-xl border p-8 flex flex-col ${
+                className={`relative rounded-2xl border p-8 flex flex-col transition-all duration-300 ${
                   highlight
-                    ? "border-primary bg-primary/5 shadow-[0_0_30px_oklch(0.75_0.18_145_/_0.15)]"
-                    : "border-border bg-card"
+                    ? "border-primary/50 bg-card shadow-[0_0_40px_oklch(0.75_0.18_145_/_0.1)] scale-[1.02]"
+                    : "border-border/60 bg-card/50 hover:border-border"
                 }`}
               >
                 {highlight && (
-                  <div className="text-xs font-semibold text-primary bg-primary/10 border border-primary/30 rounded-full px-3 py-1 self-start mb-4">
-                    Most Popular
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <div className="text-[10px] font-bold text-primary-foreground bg-primary rounded-full px-4 py-1 shadow-[0_0_16px_oklch(0.75_0.18_145_/_0.4)] uppercase tracking-wider">
+                      Most Popular
+                    </div>
                   </div>
                 )}
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-1">{name}</h3>
+                <div className="mb-8">
+                  <h3 className="text-base font-semibold text-muted-foreground mb-3">{name}</h3>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-foreground">{price}</span>
-                    <span className="text-muted-foreground text-sm">{period}</span>
+                    <span className="text-5xl font-extrabold text-foreground tracking-tight">{price}</span>
+                    {period && <span className="text-muted-foreground text-base">{period}</span>}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">{limit}</p>
+                  <p className="text-xs text-muted-foreground mt-2">{limit}</p>
                 </div>
                 <ul className="space-y-3 flex-1 mb-8">
                   {features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    <li key={f} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                      <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${highlight ? "text-primary" : "text-muted-foreground/40"}`} />
                       {f}
                     </li>
                   ))}
                 </ul>
                 <Button
                   variant={highlight ? "default" : "outline"}
-                  className="w-full"
-                  onClick={() => (window.location.href = isAuthenticated ? "/dashboard" : getLoginUrl())}
+                  size="lg"
+                  className={`w-full ${highlight ? "shadow-[0_0_20px_oklch(0.75_0.18_145_/_0.25)]" : ""}`}
+                  onClick={() => (window.location.href = ctaUrl)}
                 >
                   {cta}
                 </Button>
@@ -394,39 +547,128 @@ if (resp.intercepted)
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-24 border-t border-border">
-        <div className="container text-center max-w-2xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            It's 3 AM. Your agent just hit a 422.<br className="hidden sm:block" />
-            Does it crash — or fix itself?
+      {/* ── Final CTA ── */}
+      <section className="py-28 md:py-36 relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-primary/[0.05] rounded-full blur-[100px] pointer-events-none" />
+        <div className="container relative text-center max-w-2xl mx-auto">
+          <h2 className="text-3xl md:text-5xl font-bold mb-6 tracking-tight leading-tight">
+            It's 3 AM. Your agent hits a 422.{" "}
+            <br className="hidden sm:block" />
+            <span className="text-primary">Does it crash — or fix itself?</span>
           </h2>
-          <p className="text-muted-foreground text-lg mb-8">
+          <p className="text-lg text-muted-foreground mb-10 max-w-lg mx-auto">
             Stop babysitting your AI workflows. SelfHeal gives your agents the intelligence to recover on their own.
           </p>
-          <Button
-            size="lg"
-            className="gap-2 text-base px-10 shadow-[0_0_20px_oklch(0.75_0.18_145_/_0.35)]"
-            onClick={() => (window.location.href = isAuthenticated ? "/dashboard" : getLoginUrl())}
-          >
-            Get Started Free <ArrowRight className="w-4 h-4" />
-          </Button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Button
+              size="lg"
+              className="gap-2.5 text-base px-12 h-13 shadow-[0_0_30px_oklch(0.75_0.18_145_/_0.35)] hover:shadow-[0_0_40px_oklch(0.75_0.18_145_/_0.5)] transition-shadow"
+              onClick={() => (window.location.href = ctaUrl)}
+            >
+              Get Started Free <ArrowRight className="w-4.5 h-4.5" />
+            </Button>
+            <Link href="/docs">
+              <Button variant="ghost" size="lg" className="gap-2 text-base text-muted-foreground">
+                Read the Docs <ExternalLink className="w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border py-8">
-        <div className="container flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded bg-primary flex items-center justify-center">
-              <Zap className="w-3 h-3 text-primary-foreground" />
+      {/* ── Footer ── */}
+      <footer className="border-t border-border/50 py-12">
+        <div className="container">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+            {/* Brand */}
+            <div className="col-span-2 md:col-span-1">
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
+                  <Zap className="w-3.5 h-3.5 text-primary-foreground" />
+                </div>
+                <span className="font-bold text-sm">SelfHeal</span>
+              </div>
+              <p className="text-xs text-muted-foreground/60 leading-relaxed max-w-[200px]">
+                Self-healing API proxy for AI agents. Built for engineers who ship.
+              </p>
             </div>
-            <span>SelfHeal</span>
+
+            {/* Product */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4">Product</p>
+              <div className="space-y-2.5">
+                {[
+                  { href: "#features", label: "Features" },
+                  { href: "#pricing", label: "Pricing" },
+                  { href: "/docs", label: "Documentation" },
+                  { href: "/changelog", label: "Changelog" },
+                  { href: "/status", label: "Status" },
+                ].map(({ href, label }) => (
+                  <a key={href} href={href} className="block text-sm text-muted-foreground/60 hover:text-foreground transition-colors">
+                    {label}
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* Resources */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4">Resources</p>
+              <div className="space-y-2.5">
+                {[
+                  { href: "/dashboard/playground", label: "Playground" },
+                  { href: "/scan", label: "Free Scanner" },
+                  { href: "https://pypi.org/project/graceful-fail/", label: "PyPI", ext: true },
+                  { href: "https://www.npmjs.com/package/graceful-fail", label: "npm", ext: true },
+                ].map(({ href, label, ext }) => (
+                  <a
+                    key={href}
+                    href={href}
+                    {...(ext ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                    className="flex items-center gap-1 text-sm text-muted-foreground/60 hover:text-foreground transition-colors"
+                  >
+                    {label} {ext && <ExternalLink className="w-3 h-3" />}
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* Legal */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4">Legal</p>
+              <div className="space-y-2.5">
+                <Link href="/terms" className="block text-sm text-muted-foreground/60 hover:text-foreground transition-colors">
+                  Terms of Service
+                </Link>
+                <Link href="/privacy" className="block text-sm text-muted-foreground/60 hover:text-foreground transition-colors">
+                  Privacy Policy
+                </Link>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <p>© {new Date().getFullYear()} SelfHeal. Built for AI engineers.</p>
-            <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
-            <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+
+          <div className="border-t border-border/30 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-xs text-muted-foreground/40">
+              &copy; {new Date().getFullYear()} SelfHeal. Built for AI engineers.
+            </p>
+            <div className="flex items-center gap-4">
+              <a
+                href="https://github.com/carsonlabs/graceful-fail"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted-foreground/40 hover:text-foreground transition-colors flex items-center gap-1.5"
+              >
+                <Github className="w-3.5 h-3.5" /> GitHub
+              </a>
+              <a
+                href="https://freedomengineers.tech"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted-foreground/40 hover:text-foreground transition-colors"
+              >
+                Freedom Engineers
+              </a>
+            </div>
           </div>
         </div>
       </footer>

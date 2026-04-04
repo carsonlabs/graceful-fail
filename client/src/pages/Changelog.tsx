@@ -97,7 +97,7 @@ const RELEASES: Release[] = [
     date: "March 26, 2026",
     summary: "Billing, webhooks, and live API playground.",
     changes: [
-      { type: "feature", text: "Stripe billing — Pro ($29/mo) and Agency ($99/mo) checkout with customer portal" },
+      { type: "feature", text: "Stripe billing — Pro ($149/mo) and Agency ($349/mo) checkout with customer portal" },
       { type: "feature", text: "Webhook notifications — HMAC-signed delivery to any URL on rate_limit or non_retriable_error events" },
       { type: "feature", text: "Webhook delivery log with retry counts and HTTP status per attempt" },
       { type: "feature", text: "Live API Playground with real-time LLM error analysis, diff viewer, and copy-corrected-payload" },

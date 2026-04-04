@@ -1025,10 +1025,10 @@ function generatePDF(path: string, profile: ProspectProfile): Promise<void> {
     doc.fontSize(18).fillColor("#ffffff").text("Free", M + 25, ctaY + 85);
     doc.fontSize(9).fillColor("#94a3b8").text("500 requests/mo", M + 25, ctaY + 106);
 
-    doc.fontSize(18).fillColor("#ffffff").text("$29/mo", M + CW / 3, ctaY + 85);
+    doc.fontSize(18).fillColor("#ffffff").text("$149/mo", M + CW / 3, ctaY + 85);
     doc.fontSize(9).fillColor("#94a3b8").text("10K requests + LLM analysis", M + CW / 3, ctaY + 106);
 
-    doc.fontSize(18).fillColor("#ffffff").text("$99/mo", M + (CW * 2) / 3, ctaY + 85);
+    doc.fontSize(18).fillColor("#ffffff").text("$349/mo", M + (CW * 2) / 3, ctaY + 85);
     doc.fontSize(9).fillColor("#94a3b8").text("50K requests + priority", M + (CW * 2) / 3, ctaY + 106);
 
     // CTA button

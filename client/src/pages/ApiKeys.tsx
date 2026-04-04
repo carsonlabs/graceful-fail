@@ -135,8 +135,8 @@ export default function ApiKeys() {
                       </SelectTrigger>
                       <SelectContent className="bg-card border-border">
                         <SelectItem value="hobby">Hobby — 500 req/mo (Free)</SelectItem>
-                        <SelectItem value="pro">Pro — 10,000 req/mo ($29/mo)</SelectItem>
-                        <SelectItem value="agency">Agency — 50,000 req/mo ($99/mo)</SelectItem>
+                        <SelectItem value="pro">Pro — 10,000 req/mo ($149/mo)</SelectItem>
+                        <SelectItem value="agency">Agency — 50,000 req/mo ($349/mo)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

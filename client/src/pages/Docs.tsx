@@ -540,8 +540,8 @@ export default function Docs() {
               <tbody className="divide-y divide-border">
                 {[
                   { tier: "Hobby", requests: "500", credits: "500", price: "Free" },
-                  { tier: "Pro", requests: "10,000", credits: "10,000", price: "$29 / month" },
-                  { tier: "Agency", requests: "50,000", credits: "50,000", price: "$99 / month" },
+                  { tier: "Pro", requests: "10,000", credits: "10,000", price: "$149 / month" },
+                  { tier: "Agency", requests: "50,000", credits: "50,000", price: "$349 / month" },
                 ].map(({ tier, requests, credits, price }) => (
                   <tr key={tier} className="hover:bg-muted/30 transition-colors">
                     <td className="py-2.5 pr-6 text-sm font-medium text-foreground">{tier}</td>

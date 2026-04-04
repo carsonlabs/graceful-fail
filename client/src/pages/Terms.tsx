@@ -56,9 +56,9 @@ For full details, see our Privacy Policy.`,
     title: "6. Pricing, Billing, and Refunds",
     content: `6.1 Free Tier. The Hobby tier is provided free of charge, subject to a limit of 500 proxied requests per calendar month. We reserve the right to modify or discontinue the free tier with 30 days' notice.
 
-6.2 Paid Plans. Pro ($29/month) and Agency ($99/month) plans are billed monthly in advance via Stripe. By subscribing, you authorize us to charge your payment method on a recurring basis.
+6.2 Paid Plans. Pro ($149/month) and Agency ($349/month) plans are billed monthly in advance via Stripe. By subscribing, you authorize us to charge your payment method on a recurring basis.
 
-6.3 Overages. Agency plan subscribers are charged $0.005 per request beyond the 50,000/month included limit. Overage charges are billed at the end of each billing cycle.
+6.3 Overages. Agency plan subscribers are charged $0.003 per request beyond the 50,000/month included limit. Overage charges are billed at the end of each billing cycle.
 
 6.4 Refunds. We offer a pro-rated refund for the unused portion of a subscription if you cancel within the first 7 days of a new billing period. After 7 days, no refunds are issued for the current billing period. Cancellations take effect at the end of the current billing period.
 

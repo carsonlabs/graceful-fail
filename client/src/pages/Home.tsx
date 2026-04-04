@@ -59,7 +59,7 @@ const PRICING = [
   },
   {
     name: "Pro",
-    price: "$29",
+    price: "$149",
     period: "/month",
     limit: "10,000 requests/month",
     features: ["10,000 proxied requests", "LLM error analysis", "Multiple API keys", "Request logs (30 days)", "Usage analytics", "Email support"],
@@ -68,10 +68,10 @@ const PRICING = [
   },
   {
     name: "Agency",
-    price: "$99",
+    price: "$349",
     period: "/month",
     limit: "50,000 requests/month",
-    features: ["50,000 proxied requests", "$0.005 per extra request", "Unlimited API keys", "Request logs (90 days)", "Full analytics", "Priority support"],
+    features: ["50,000 proxied requests", "$0.003 per extra request", "Unlimited API keys", "Request logs (90 days)", "Full analytics", "Priority support"],
     cta: "Get Agency",
     highlight: false,
   },

@@ -19,8 +19,13 @@ import {
   Share2,
   Webhook,
   Send,
+  Flame,
+  Shield,
+  RotateCcw,
+  Skull,
+  Zap,
 } from "lucide-react";
-import { useState as useTabState } from "react";
+import { useState as useTabState, useCallback, useRef } from "react";
 import {
   Select,
   SelectContent,
@@ -117,9 +122,287 @@ function readQueryParams() {
   };
 }
 
+// ─── Chaos Mode ──────────────────────────────────────────────────────────────
+interface ChaosResult {
+  id: number;
+  scenario: string;
+  description: string;
+  status: number;
+  intercepted: boolean;
+  healed: boolean;
+  durationMs: number;
+  errorCategory?: string;
+  fix?: string;
+  timestamp: number;
+}
+
+function ChaosMode({ apiKey }: { apiKey: string }) {
+  const [results, setResults] = useState<ChaosResult[]>([]);
+  const [running, setRunning] = useState(false);
+  const [totalSent, setTotalSent] = useState(0);
+  const abortRef = useRef(false);
+  const idRef = useRef(0);
+
+  const stats = {
+    total: results.length,
+    intercepted: results.filter((r) => r.intercepted).length,
+    healed: results.filter((r) => r.healed).length,
+    passthrough: results.filter((r) => !r.intercepted).length,
+    avgMs: results.length > 0 ? Math.round(results.reduce((s, r) => s + r.durationMs, 0) / results.length) : 0,
+  };
+  const healRate = stats.intercepted > 0 ? Math.round((stats.healed / stats.intercepted) * 100) : 0;
+  const survivalRate = stats.total > 0 ? Math.round(((stats.healed + stats.passthrough) / stats.total) * 100) : 0;
+
+  const fireRequest = useCallback(async (): Promise<ChaosResult | null> => {
+    const start = Date.now();
+    try {
+      const res = await fetch("/api/proxy", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+          "X-Destination-URL": `${window.location.origin}/api/roulette?bias=errors`,
+          "X-Destination-Method": "POST",
+        },
+        body: JSON.stringify({ chaos: true, ts: Date.now() }),
+      });
+
+      const durationMs = Date.now() - start;
+      const data = await res.json().catch(() => ({}));
+      const intercepted = data.graceful_fail_intercepted === true;
+      const healed = intercepted && data.error_analysis?.is_retriable === true;
+
+      idRef.current += 1;
+      return {
+        id: idRef.current,
+        scenario: res.headers.get("X-Roulette-Scenario") || data.original_status_code?.toString() || "unknown",
+        description: res.headers.get("X-Roulette-Description") || "",
+        status: data.original_status_code ?? res.status,
+        intercepted,
+        healed,
+        durationMs,
+        errorCategory: data.error_analysis?.error_category,
+        fix: data.error_analysis?.actionable_fix_for_agent,
+        timestamp: Date.now(),
+      };
+    } catch {
+      idRef.current += 1;
+      return {
+        id: idRef.current,
+        scenario: "connection-error",
+        description: "Request failed entirely",
+        status: 0,
+        intercepted: false,
+        healed: false,
+        durationMs: Date.now() - start,
+        timestamp: Date.now(),
+      };
+    }
+  }, [apiKey]);
+
+  const runChaos = useCallback(async (count: number) => {
+    if (!apiKey.trim()) {
+      toast.error("Paste your API key first");
+      return;
+    }
+    setRunning(true);
+    setResults([]);
+    setTotalSent(count);
+    abortRef.current = false;
+
+    for (let i = 0; i < count; i++) {
+      if (abortRef.current) break;
+      const result = await fireRequest();
+      if (result) {
+        setResults((prev) => [result, ...prev]);
+      }
+      // Small stagger to make the stream visible
+      if (i < count - 1) {
+        await new Promise((r) => setTimeout(r, 200));
+      }
+    }
+    setRunning(false);
+  }, [apiKey, fireRequest]);
+
+  const stop = () => { abortRef.current = true; };
+
+  return (
+    <div className="space-y-5">
+      {/* Controls */}
+      <Card className="bg-card border-border overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent pointer-events-none" />
+        <CardContent className="px-5 py-5 space-y-4 relative">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
+              <Flame className="w-5 h-5 text-red-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Chaos Mode</p>
+              <p className="text-xs text-muted-foreground">
+                Fire rapid requests through API Roulette via your proxy. Watch SelfHeal intercept and heal errors in real-time.
+              </p>
+            </div>
+          </div>
+
+          {!apiKey.trim() && (
+            <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2">
+              <p className="text-xs text-amber-400">
+                Paste your full API key in the Proxy Tester tab first, then come back here.
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { label: "10 requests", count: 10, desc: "Quick test" },
+              { label: "25 requests", count: 25, desc: "Stress test" },
+              { label: "50 requests", count: 50, desc: "Full chaos" },
+            ].map(({ label, count, desc }) => (
+              <Button
+                key={count}
+                variant={count === 50 ? "destructive" : "outline"}
+                className="gap-2"
+                onClick={() => runChaos(count)}
+                disabled={running || !apiKey.trim()}
+              >
+                {running ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Flame className="w-3.5 h-3.5" />}
+                {label}
+                <span className="text-[10px] opacity-60">({desc})</span>
+              </Button>
+            ))}
+            {running && (
+              <Button variant="ghost" onClick={stop} className="gap-1.5 text-red-400">
+                <XCircle className="w-3.5 h-3.5" /> Stop
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Live Stats */}
+      {results.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="rounded-xl border border-border bg-card px-4 py-3 text-center">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Sent</p>
+            <p className="text-xl font-bold text-foreground tabular-nums">
+              {stats.total}
+              <span className="text-xs font-normal text-muted-foreground">/{totalSent}</span>
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-card px-4 py-3 text-center">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Intercepted</p>
+            <p className="text-xl font-bold text-amber-400 tabular-nums">{stats.intercepted}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card px-4 py-3 text-center">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Healed</p>
+            <p className="text-xl font-bold text-emerald-400 tabular-nums">
+              {stats.healed}
+              {stats.intercepted > 0 && <span className="text-xs font-normal text-muted-foreground ml-1">({healRate}%)</span>}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-card px-4 py-3 text-center">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Survival</p>
+            <p className={`text-xl font-bold tabular-nums ${survivalRate >= 80 ? "text-emerald-400" : survivalRate >= 50 ? "text-amber-400" : "text-red-400"}`}>
+              {survivalRate}%
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-card px-4 py-3 text-center">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Avg Latency</p>
+            <p className="text-xl font-bold text-foreground tabular-nums">{stats.avgMs}<span className="text-xs font-normal text-muted-foreground">ms</span></p>
+          </div>
+        </div>
+      )}
+
+      {/* Live Feed */}
+      {results.length > 0 && (
+        <Card className="bg-card border-border">
+          <CardHeader className="px-5 py-4 pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                {running && <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />}
+                Live Feed
+              </CardTitle>
+              <span className="text-[10px] text-muted-foreground">{results.length} results</span>
+            </div>
+          </CardHeader>
+          <CardContent className="px-5 pb-4">
+            <div className="space-y-1.5 max-h-[420px] overflow-y-auto">
+              {results.map((r) => (
+                <div
+                  key={r.id}
+                  className="flex items-center gap-3 py-2 px-3 rounded-md bg-muted/30 animate-in fade-in slide-in-from-top-1 duration-200"
+                >
+                  {/* Status icon */}
+                  {r.intercepted && r.healed ? (
+                    <Shield className="w-4 h-4 text-emerald-400 shrink-0" />
+                  ) : r.intercepted ? (
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                  ) : r.status === 0 ? (
+                    <Skull className="w-4 h-4 text-red-400 shrink-0" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  )}
+
+                  {/* Status code */}
+                  <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                    r.status >= 500 ? "bg-red-500/15 text-red-400"
+                    : r.status >= 400 ? "bg-amber-500/15 text-amber-400"
+                    : r.status === 0 ? "bg-red-500/15 text-red-400"
+                    : "bg-emerald-500/15 text-emerald-400"
+                  }`}>
+                    {r.status || "RESET"}
+                  </span>
+
+                  {/* Scenario name */}
+                  <span className="text-xs text-foreground font-medium truncate min-w-0">{r.scenario}</span>
+
+                  {/* Category badge */}
+                  {r.errorCategory && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-foreground/5 text-muted-foreground shrink-0 hidden md:inline">
+                      {r.errorCategory.replace(/_/g, " ")}
+                    </span>
+                  )}
+
+                  {/* Result */}
+                  <div className="ml-auto flex items-center gap-2 shrink-0">
+                    {r.intercepted && r.healed && (
+                      <span className="text-[10px] font-medium text-emerald-400 flex items-center gap-0.5">
+                        <RotateCcw className="w-3 h-3" /> healed
+                      </span>
+                    )}
+                    {r.intercepted && !r.healed && (
+                      <span className="text-[10px] font-medium text-amber-400 flex items-center gap-0.5">
+                        <Zap className="w-3 h-3" /> analyzed
+                      </span>
+                    )}
+                    <span className="text-[10px] text-muted-foreground font-mono">{r.durationMs}ms</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Empty state */}
+      {results.length === 0 && !running && (
+        <div className="flex flex-col items-center justify-center py-16 gap-3">
+          <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
+            <Flame className="w-8 h-8 text-red-400/50" />
+          </div>
+          <p className="text-sm text-muted-foreground">Hit the button to unleash chaos</p>
+          <p className="text-xs text-muted-foreground/60">
+            Each request hits API Roulette through your SelfHeal proxy
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Playground() {
   const initial = readQueryParams();
-  const [activeTab, setActiveTab] = useTabState<"proxy" | "webhook">("proxy");
+  const [activeTab, setActiveTab] = useTabState<"proxy" | "webhook" | "chaos">("proxy");
   const [destinationUrl, setDestinationUrl] = useState(initial.destinationUrl);
   const [method, setMethod] = useState<string>(initial.method);
   const [body, setBody] = useState(initial.body);
@@ -325,6 +608,17 @@ export default function Playground() {
             <Webhook className="w-3.5 h-3.5" />
             Webhook Dry-Run
           </button>
+          <button
+            onClick={() => setActiveTab("chaos")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === "chaos"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Flame className="w-3.5 h-3.5" />
+            Chaos Mode
+          </button>
         </div>
 
         {activeTab === "webhook" && (
@@ -411,6 +705,8 @@ export default function Playground() {
             )}
           </div>
         )}
+
+        {activeTab === "chaos" && <ChaosMode apiKey={apiKey} />}
 
         {activeTab === "proxy" && <div className="grid lg:grid-cols-2 gap-6">
           {/* ── Left: Request builder ── */}

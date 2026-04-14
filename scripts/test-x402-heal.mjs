@@ -162,7 +162,7 @@ const healData = await healResp.json();
 if (healData.healed) {
   console.log("\n=== HEAL SUCCEEDED ===");
   console.log("Settled:", healData.settled);
-  console.log("TX Hash:", healData.txHash ?? "N/A");
+  console.log("TX:", healData.transaction ?? healData.txHash ?? "N/A");
   console.log("Tier:", healData.meta?.tier);
   console.log("Cost:", healData.meta?.cost_usdc, "USDC");
   console.log("Latency:", healData.meta?.latency_ms, "ms");

@@ -34,21 +34,25 @@ export interface X402PaymentScheme {
   };
 }
 
-export interface X402PaymentProof {
-  payload: string;
-  scheme: "exact" | "upto";
+/** Decoded X-PAYMENT header (v1 format) */
+export interface X402PaymentPayload {
+  x402Version: number;
+  scheme: string;
+  network: string;
+  payload: Record<string, unknown>;
 }
 
 export interface X402VerifyResult {
-  valid: boolean;
-  amountPaid?: string;
+  isValid: boolean;
   invalidReason?: string;
 }
 
 export interface X402SettleResult {
   success: boolean;
-  txHash?: string;
-  error?: string;
+  transaction?: string;
+  network?: string;
+  errorReason?: string;
+  errorMessage?: string;
 }
 
 // --- Pricing ---
@@ -176,46 +180,55 @@ export class FacilitatorClient {
   constructor(private facilitatorUrl: string) {}
 
   async verify(
-    paymentHeader: string,
-    expectedAmount: string,
-    payTo: string,
+    paymentPayload: X402PaymentPayload,
+    paymentRequirements: X402PaymentScheme,
   ): Promise<X402VerifyResult> {
     try {
       const resp = await fetch(`${this.facilitatorUrl}/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ payment: paymentHeader, expectedAmount, payTo }),
+        body: JSON.stringify({
+          x402Version: paymentPayload.x402Version,
+          paymentPayload,
+          paymentRequirements,
+        }),
       });
       if (!resp.ok) {
-        return { valid: false, invalidReason: `Facilitator error: ${resp.status}` };
+        const text = await resp.text().catch(() => "");
+        return { isValid: false, invalidReason: `Facilitator error ${resp.status}: ${text.slice(0, 200)}` };
       }
       return (await resp.json()) as X402VerifyResult;
     } catch (err) {
       return {
-        valid: false,
+        isValid: false,
         invalidReason: `Facilitator unreachable: ${err instanceof Error ? err.message : String(err)}`,
       };
     }
   }
 
   async settle(
-    paymentHeader: string,
-    payTo: string,
+    paymentPayload: X402PaymentPayload,
+    paymentRequirements: X402PaymentScheme,
   ): Promise<X402SettleResult> {
     try {
       const resp = await fetch(`${this.facilitatorUrl}/settle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ payment: paymentHeader, payTo }),
+        body: JSON.stringify({
+          x402Version: paymentPayload.x402Version,
+          paymentPayload,
+          paymentRequirements,
+        }),
       });
       if (!resp.ok) {
-        return { success: false, error: `Facilitator settle error: ${resp.status}` };
+        const text = await resp.text().catch(() => "");
+        return { success: false, errorMessage: `Facilitator settle error ${resp.status}: ${text.slice(0, 200)}` };
       }
       return (await resp.json()) as X402SettleResult;
     } catch (err) {
       return {
         success: false,
-        error: `Facilitator unreachable: ${err instanceof Error ? err.message : String(err)}`,
+        errorMessage: `Facilitator unreachable: ${err instanceof Error ? err.message : String(err)}`,
       };
     }
   }
@@ -262,26 +275,22 @@ export function build402Response(
 
 // --- Payment Extraction ---
 
-export function extractPaymentProof(
+/** Decode the X-PAYMENT header into a full payment payload object */
+export function extractPaymentPayload(
   headers: Record<string, string | string[] | undefined>,
-): X402PaymentProof | null {
+): X402PaymentPayload | null {
   const paymentHeader =
     (headers["x-payment"] as string) ??
     (headers["x-payment-response"] as string);
 
   if (!paymentHeader) return null;
 
-  let scheme: "exact" | "upto" = "exact";
   try {
     const decoded = JSON.parse(
       Buffer.from(paymentHeader, "base64").toString("utf-8"),
     );
-    if (decoded.maxDebitAmount || decoded.scheme === "upto") {
-      scheme = "upto";
-    }
+    return decoded as X402PaymentPayload;
   } catch {
-    // If not base64 JSON, treat as exact
+    return null;
   }
-
-  return { payload: paymentHeader, scheme };
 }

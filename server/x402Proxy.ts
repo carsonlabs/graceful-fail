@@ -19,10 +19,12 @@ import type { Request, Response, Router } from "express";
 import { Router as createRouter } from "express";
 import {
   type X402Config,
+  type X402PaymentPayload,
+  type X402PaymentScheme,
   PricingEngine,
   FacilitatorClient,
   build402Response,
-  extractPaymentProof,
+  extractPaymentPayload,
   loadX402Config,
 } from "./x402";
 import { analyzeError, sanitizeHeaders, type AnalysisInput } from "./llmAnalysis";
@@ -127,7 +129,7 @@ export function createX402Router(deps: X402RouterDeps): {
   // ── POST /api/x402/proxy — x402-protected proxy ─────────────────────────
   router.post("/api/x402/proxy", async (req: Request, res: Response) => {
     const clientIp = getClientIp(req);
-    const hasPayment = !!extractPaymentProof(req.headers);
+    const hasPayment = !!extractPaymentPayload(req.headers);
     const rateCheck = rateLimiter.check(clientIp, hasPayment);
 
     if (!rateCheck.allowed) {
@@ -233,12 +235,16 @@ export function createX402Router(deps: X402RouterDeps): {
       // FAILURE — check for x402 payment
       monitor.proxyFailures.inc({ status: String(targetResponse.status) });
       const errorBody = await targetResponse.text();
-      const paymentProof = extractPaymentProof(req.headers);
+      const paymentPayload = extractPaymentPayload(req.headers);
 
-      if (!paymentProof) {
+      // Build the payment requirements that match this error
+      const tier = pricing.getTier(errorBody, targetResponse.status);
+      const paymentSpec = build402Response(config, pricing, errorBody.slice(0, 500), targetResponse.status, targetUrl);
+      const paymentRequirements = paymentSpec.accepts[0]; // The exact scheme entry
+
+      if (!paymentPayload) {
         // No payment — return 402 with pricing spec
         if (!config.receivingWallet) {
-          // x402 not configured — return plain error
           res.status(targetResponse.status).json({
             error: "Target API returned an error",
             status: targetResponse.status,
@@ -248,28 +254,14 @@ export function createX402Router(deps: X402RouterDeps): {
           return;
         }
 
-        const paymentRequired = build402Response(
-          config,
-          pricing,
-          errorBody.slice(0, 500),
-          targetResponse.status,
-          targetUrl,
-        );
-        res.status(402).json(paymentRequired);
+        res.status(402).json(paymentSpec);
         return;
       }
 
       // PAID PATH — verify → heal → settle on success
-      const tier = pricing.getTier(errorBody, targetResponse.status);
-      const expectedAmount = Math.round(tier.basePrice * 1_000_000).toString();
+      const verification = await facilitator.verify(paymentPayload, paymentRequirements);
 
-      const verification = await facilitator.verify(
-        paymentProof.payload,
-        expectedAmount,
-        config.receivingWallet,
-      );
-
-      if (!verification.valid) {
+      if (!verification.isValid) {
         res.status(402).json({
           error: "Payment verification failed",
           reason: verification.invalidReason,
@@ -278,7 +270,7 @@ export function createX402Router(deps: X402RouterDeps): {
         return;
       }
 
-      monitor.x402Payments.inc({ scheme: paymentProof.scheme });
+      monitor.x402Payments.inc({ scheme: paymentPayload.scheme ?? "exact" });
 
       // Run LLM heal analysis using the existing analyzeError pipeline
       monitor.healRequests.inc({ status: String(targetResponse.status) });
@@ -300,12 +292,10 @@ export function createX402Router(deps: X402RouterDeps): {
 
         // Settle payment only on successful analysis
         monitor.healSuccesses.inc();
-        const settleResult = await facilitator.settle(
-          paymentProof.payload,
-          config.receivingWallet,
-        );
+        const settleResult = await facilitator.settle(paymentPayload, paymentRequirements);
 
         if (settleResult.success) {
+          const expectedAmount = Math.round(tier.basePrice * 1_000_000).toString();
           monitor.x402Revenue.inc({ tier: tier.name }, parseInt(expectedAmount));
         }
 
@@ -315,7 +305,7 @@ export function createX402Router(deps: X402RouterDeps): {
         res.json({
           healed: true,
           settled: settleResult.success,
-          txHash: settleResult.txHash,
+          transaction: settleResult.transaction,
           original_status_code: targetResponse.status,
           error_analysis: analysis,
           raw_destination_response: safeJsonParse(errorBody) ?? errorBody,
@@ -344,9 +334,9 @@ export function createX402Router(deps: X402RouterDeps): {
 
   // ── POST /api/x402/heal — direct heal endpoint ──────────────────────────
   router.post("/api/x402/heal", async (req: Request, res: Response) => {
-    const paymentProof = extractPaymentProof(req.headers);
+    const paymentPayload = extractPaymentPayload(req.headers);
 
-    if (!paymentProof) {
+    if (!paymentPayload) {
       const { errorBody, statusCode } = req.body as { errorBody?: string; statusCode?: number };
       if (!config.receivingWallet) {
         res.status(503).json({ error: "x402 payments not configured on this server." });
@@ -363,14 +353,13 @@ export function createX402Router(deps: X402RouterDeps): {
       return;
     }
 
-    const { url, method, headers, body, statusCode, errorBody, errorHeaders } = req.body as {
+    const { url, method, headers, body, statusCode, errorBody } = req.body as {
       url?: string;
       method?: string;
       headers?: Record<string, string>;
       body?: string;
       statusCode?: number;
       errorBody?: string;
-      errorHeaders?: Record<string, string>;
     };
 
     if (!url || !statusCode || !errorBody) {
@@ -381,17 +370,14 @@ export function createX402Router(deps: X402RouterDeps): {
       return;
     }
 
-    // Verify payment
+    // Build matching requirements for this error
     const tier = pricing.getTier(errorBody, statusCode);
-    const expectedAmount = Math.round(tier.basePrice * 1_000_000).toString();
+    const paymentSpec = build402Response(config, pricing, errorBody.slice(0, 500), statusCode, url);
+    const paymentRequirements = paymentSpec.accepts[0];
 
-    const verification = await facilitator.verify(
-      paymentProof.payload,
-      expectedAmount,
-      config.receivingWallet,
-    );
+    const verification = await facilitator.verify(paymentPayload, paymentRequirements);
 
-    if (!verification.valid) {
+    if (!verification.isValid) {
       res.status(402).json({
         error: "Payment verification failed",
         reason: verification.invalidReason,
@@ -399,7 +385,7 @@ export function createX402Router(deps: X402RouterDeps): {
       return;
     }
 
-    monitor.x402Payments.inc({ scheme: paymentProof.scheme });
+    monitor.x402Payments.inc({ scheme: paymentPayload.scheme ?? "exact" });
     monitor.healRequests.inc({ status: String(statusCode) });
 
     try {
@@ -413,15 +399,12 @@ export function createX402Router(deps: X402RouterDeps): {
       });
 
       monitor.healSuccesses.inc();
-      const settleResult = await facilitator.settle(
-        paymentProof.payload,
-        config.receivingWallet,
-      );
+      const settleResult = await facilitator.settle(paymentPayload, paymentRequirements);
 
       res.json({
         healed: true,
         settled: settleResult.success,
-        txHash: settleResult.txHash,
+        transaction: settleResult.transaction,
         error_analysis: analysis,
       });
     } catch (err) {

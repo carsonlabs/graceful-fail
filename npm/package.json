@@ -1,7 +1,7 @@
 {
   "name": "graceful-fail",
-  "version": "0.3.0",
-  "description": "Self-healing API proxy for AI agents. Route HTTP calls through Graceful Fail and get structured, LLM-powered fix instructions when APIs return errors.",
+  "version": "0.4.0",
+  "description": "Self-healing API proxy for AI agents with x402 outcome-based pricing. Successes are free. Pay per successful heal in USDC.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -36,7 +36,10 @@
     "self-healing",
     "agent-reliability",
     "graceful-fail",
-    "selfheal"
+    "selfheal",
+    "x402",
+    "micropayments",
+    "usdc"
   ],
   "author": "Freedom Engineers <hello@freedomengineers.tech>",
   "license": "MIT",

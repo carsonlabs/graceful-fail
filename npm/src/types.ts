@@ -12,17 +12,20 @@ export interface ErrorAnalysis {
   actionable_fix_for_agent: string;
   suggested_payload_diff: PayloadDiff;
   error_category:
-    | "validation_error"
-    | "authentication_error"
-    | "authorization_error"
+    | "validation"
+    | "auth"
     | "not_found"
     | "rate_limit"
     | "server_error"
-    | "timeout"
-    | "unknown";
+    | "unknown"
+    // Legacy categories (v1 API)
+    | "validation_error"
+    | "authentication_error"
+    | "authorization_error"
+    | "timeout";
 }
 
-/** Full Graceful Fail intercepted error envelope. */
+/** Full Graceful Fail intercepted error envelope (legacy v1 API). */
 export interface InterceptedEnvelope {
   graceful_fail_intercepted: true;
   selfheal_auto_fixed?: boolean;
@@ -41,7 +44,7 @@ export interface InterceptedEnvelope {
   };
 }
 
-/** Response envelope when SelfHeal auto-fixed the request. */
+/** Response envelope when SelfHeal auto-fixed the request (legacy v1 API). */
 export interface AutoFixedEnvelope {
   selfheal_auto_fixed: true;
   data: unknown;
@@ -59,43 +62,86 @@ export interface AutoFixedEnvelope {
   };
 }
 
+/** x402 payment spec returned when heal requires payment. */
+export interface X402PaymentRequired {
+  x402Version: 1;
+  accepts: X402PaymentScheme[];
+  error: string;
+}
+
+export interface X402PaymentScheme {
+  scheme: "exact" | "upto";
+  network: string;
+  maxAmountRequired: string;
+  resource: string;
+  description: string;
+  mimeType: string;
+  payTo: string;
+  requiredDeadlineSeconds: number;
+  extra: { name: string; token: string };
+}
+
+/** x402 healed response. */
+export interface X402HealedResponse {
+  healed: true;
+  settled: boolean;
+  txHash?: string;
+  original_status_code: number;
+  error_analysis: ErrorAnalysis;
+  raw_destination_response: unknown;
+  meta: { tier: string; cost_usdc: number; latency_ms: number };
+}
+
 /** Unified response from the Graceful Fail proxy. */
 export interface GracefulFailResponse<T = unknown> {
   /** HTTP status code from the destination API. */
   statusCode: number;
   /** True if the error was intercepted and analyzed by the LLM. */
   intercepted: boolean;
-  /** True if SelfHeal auto-fixed the payload and the retry succeeded. */
+  /** True if SelfHeal auto-fixed the payload and the retry succeeded (legacy only). */
   autoFixed: boolean;
-  /** Response data. On success, the destination response. On auto-fix, the retried response. On interception, the full envelope. */
+  /** True if the error was healed via x402 payment. */
+  healed: boolean;
+  /** Response data. */
   data: T;
-  /** LLM-generated error analysis (only when intercepted or auto-fixed). */
+  /** LLM-generated error analysis (only when intercepted or healed). */
   errorAnalysis?: ErrorAnalysis;
-  /** The raw destination API response body (only when intercepted). */
+  /** The raw destination API response body. */
   rawResponse?: unknown;
-  /** The payload diff that was applied (only when auto-fixed). */
+  /** The payload diff that was applied (only when auto-fixed, legacy). */
   appliedDiff?: PayloadDiff;
-  /** Credits consumed (0 for pass-through, 1 for intercepted/auto-fixed). */
+  /** Credits consumed (legacy) or USDC cost (x402). */
   creditsUsed: number;
   /** Total proxy round-trip time in milliseconds. */
   durationMs: number;
+  /** x402 payment required spec (only when status 402). */
+  paymentRequired?: X402PaymentRequired;
+  /** Whether payment was settled (x402). */
+  settled?: boolean;
+  /** Transaction hash (x402). */
+  txHash?: string;
 }
 
 /** Options for creating a GracefulFail client. */
 export interface GracefulFailOptions {
-  /** Your Graceful Fail API key (starts with gf_). */
-  apiKey: string;
+  /** Your Graceful Fail API key (starts with gf_). Omit for x402 mode. */
+  apiKey?: string;
   /** Base URL of the Graceful Fail proxy. Defaults to https://selfheal.dev */
   baseUrl?: string;
   /** Request timeout in milliseconds. Defaults to 30000. */
   timeout?: number;
-  /** Whether to auto-retry failed requests with LLM-suggested payload fixes. Defaults to true. */
+  /** Whether to auto-retry failed requests with LLM-suggested payload fixes. Defaults to true. Legacy only. */
   autoRetry?: boolean;
-  /** Bring your own LLM API key for error analysis (any OpenAI-compatible key). */
+  /**
+   * x402 payment callback. Called when a 402 is received.
+   * Return the payment proof string, or null to skip payment.
+   */
+  onPaymentRequired?: (info: X402PaymentRequired) => Promise<string | null>;
+  /** Bring your own LLM API key for error analysis (legacy only). */
   llmApiKey?: string;
-  /** Override the LLM model used for error analysis (e.g. gpt-4o). */
+  /** Override the LLM model used for error analysis (legacy only). */
   llmModel?: string;
-  /** Override the LLM API base URL (e.g. Azure OpenAI endpoint). */
+  /** Override the LLM API base URL (legacy only). */
   llmBaseUrl?: string;
 }
 

@@ -1,29 +1,26 @@
 """
 SelfHeal (graceful-fail) — Self-healing API proxy for AI agents.
 
-Route your HTTP calls through SelfHeal. When an API returns an error,
-SelfHeal diagnoses it with an LLM, fixes the payload, and retries
-automatically — returning a success response as if nothing went wrong.
+Supports two modes:
+- **x402 mode** (default): No API key. Pay per successful heal in USDC.
+- **Legacy mode**: API key auth with monthly tiers.
 
-Usage:
+x402 usage (recommended):
     from graceful_fail import GracefulFail
 
-    gf = GracefulFail(api_key="gf_your_key")
-    response = gf.request("POST", "https://api.openai.com/v1/chat/completions",
-        json={"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "Hi"}]},
-        headers={"Authorization": "Bearer sk-..."},
-    )
+    gf = GracefulFail()  # No API key needed
+    resp = gf.post("https://api.example.com/users", json={"name": "Alice"})
 
-    if response.auto_fixed:
-        # SelfHeal fixed the payload and retried successfully
-        print("Auto-fixed!", response.data)
-        print("What was changed:", response.applied_diff)
-    elif response.intercepted:
-        # Error detected but couldn't be auto-fixed
-        print(response.error_analysis.actionable_fix_for_agent)
+    if resp.healed:
+        print("Fix:", resp.error_analysis.actionable_fix_for_agent)
+    elif resp.payment_required:
+        print("Payment needed:", resp.payment_required)
     else:
-        # Success — passed through transparently
-        print(response.data)
+        print("Success:", resp.data)
+
+Legacy usage:
+    gf = GracefulFail(api_key="gf_your_key")
+    resp = gf.post(url, json=payload)
 """
 
 from graceful_fail.client import GracefulFail, GracefulFailAsync
@@ -39,7 +36,7 @@ from graceful_fail.exceptions import (
     ProxyError,
 )
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __all__ = [
     "GracefulFail",
     "GracefulFailAsync",

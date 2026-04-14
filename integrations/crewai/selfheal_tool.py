@@ -1,14 +1,16 @@
-"""CrewAI tool for making self-healing HTTP requests through GracefulFail.
+"""CrewAI tool for making self-healing HTTP requests through SelfHeal.
 
-When an API returns an error, instead of a raw HTTP failure the agent receives
-structured fix instructions: what went wrong, whether to retry, and exactly
-what to change in the request.
+Uses x402 outcome-based pricing by default — no API key needed.
+Agents only pay (in USDC) when errors are successfully healed.
 
 Usage:
     from integrations.crewai.selfheal_tool import SelfHealTool
 
-    tool = SelfHealTool()
+    tool = SelfHealTool()  # No API key needed (x402 mode)
     agent = Agent(role="API caller", tools=[tool], ...)
+
+Legacy mode:
+    tool = SelfHealTool()  # Set SELFHEAL_API_KEY env var
 """
 
 from __future__ import annotations
@@ -22,7 +24,6 @@ from pydantic import BaseModel, Field
 
 from graceful_fail import GracefulFail
 from graceful_fail.exceptions import (
-    AuthenticationError,
     GracefulFailError,
     RateLimitError,
 )
@@ -55,14 +56,12 @@ class SelfHealToolInput(BaseModel):
 
 
 class SelfHealTool(BaseTool):
-    """Make HTTP requests through the GracefulFail self-healing proxy.
+    """Make HTTP requests through the SelfHeal self-healing proxy.
 
-    On success (2xx), returns the API response as a JSON string.
-    On failure (4xx/5xx), returns structured fix instructions generated
-    by GracefulFail's LLM analysis -- including the error category,
-    whether the request is retriable, and exactly what to change.
+    Uses x402 outcome-based pricing by default. Successes are free.
+    Errors cost $0.001-$0.005 USDC, charged only on successful heal.
 
-    Requires the SELFHEAL_API_KEY environment variable to be set.
+    If SELFHEAL_API_KEY is set, falls back to legacy API key mode.
     Install the client library with: pip install graceful-fail
     """
 
@@ -71,8 +70,8 @@ class SelfHealTool(BaseTool):
         "Make an HTTP request to any API through the SelfHeal proxy. "
         "If the API returns an error (4xx/5xx), you will receive structured "
         "fix instructions explaining what went wrong and how to correct "
-        "your request, instead of a raw error. Use this for all external "
-        "API calls so failures are automatically diagnosed."
+        "your request. Successes are free. Errors cost $0.001-$0.005 USDC "
+        "via x402, charged only when the heal succeeds."
     )
     args_schema: Type[BaseModel] = SelfHealToolInput
     package_dependencies: list = ["graceful-fail"]
@@ -85,15 +84,7 @@ class SelfHealTool(BaseTool):
         headers: Optional[str] = None,
         **kwargs: Any,
     ) -> str:
-        """Execute the HTTP request through GracefulFail."""
-        api_key = os.environ.get("SELFHEAL_API_KEY", "")
-        if not api_key:
-            return (
-                "Error: SELFHEAL_API_KEY environment variable is not set. "
-                "Get your API key at https://selfheal.dev and set it with: "
-                "export SELFHEAL_API_KEY=gf_your_key"
-            )
-
+        """Execute the HTTP request through SelfHeal."""
         # Parse optional JSON fields
         parsed_body: Optional[Dict[str, Any]] = None
         parsed_headers: Optional[Dict[str, str]] = None
@@ -115,6 +106,8 @@ class SelfHealTool(BaseTool):
             return f"Error: Unsupported HTTP method '{method}'. Use GET, POST, PUT, PATCH, or DELETE."
 
         try:
+            # Use API key if set (legacy mode), otherwise x402 mode
+            api_key = os.environ.get("SELFHEAL_API_KEY") or None
             client = GracefulFail(api_key=api_key)
 
             request_kwargs: Dict[str, Any] = {}
@@ -124,22 +117,20 @@ class SelfHealTool(BaseTool):
                 request_kwargs["json"] = parsed_body
 
             response = client.request(method, url, **request_kwargs)
-        except AuthenticationError:
-            return (
-                "Error: SELFHEAL_API_KEY is invalid. "
-                "Check your key at https://selfheal.dev/dashboard."
-            )
         except RateLimitError as e:
-            return (
-                f"Rate limit exceeded: {e}. "
-                "Upgrade your plan at https://selfheal.dev/pricing or wait for the limit to reset."
-            )
+            return f"Rate limit exceeded: {e}. Wait and retry."
         except GracefulFailError as e:
-            return f"GracefulFail proxy error: {e}"
+            return f"SelfHeal proxy error: {e}"
         except Exception as e:
-            return f"Unexpected error calling GracefulFail: {e}"
+            return f"Unexpected error calling SelfHeal: {e}"
 
         # Format the response for the agent
+        if response.healed:
+            return self._format_healed(response)
+
+        if response.payment_required:
+            return self._format_payment_required(response)
+
         if response.intercepted:
             return self._format_intercepted(response)
 
@@ -149,8 +140,33 @@ class SelfHealTool(BaseTool):
         return str(response.data)
 
     @staticmethod
+    def _format_healed(response: Any) -> str:
+        ea = response.error_analysis
+        lines = [
+            f"HEALED via x402 (HTTP {response.status_code})",
+            f"Category: {ea.error_category}",
+            f"Explanation: {ea.human_readable_explanation}",
+            f"Fix: {ea.actionable_fix_for_agent}",
+        ]
+        if response.settled:
+            lines.append(f"Payment settled. TX: {response.tx_hash or 'pending'}")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _format_payment_required(response: Any) -> str:
+        pr = response.payment_required
+        accepts = pr.get("accepts", [{}])
+        accept = accepts[0] if accepts else {}
+        return "\n".join([
+            "PAYMENT REQUIRED (x402)",
+            f"Error: {pr.get('error', 'Unknown')}",
+            f"Price: {accept.get('maxAmountRequired', '?')} atomic USDC on {accept.get('network', 'base')}",
+            f"Pay to: {accept.get('payTo', '?')}",
+        ])
+
+    @staticmethod
     def _format_intercepted(response: Any) -> str:
-        """Format an intercepted error response as readable text."""
+        """Format an intercepted error response (legacy mode)."""
         ea = response.error_analysis
         lines = [
             f"API ERROR INTERCEPTED (HTTP {response.status_code})",

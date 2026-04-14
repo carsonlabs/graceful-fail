@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "graceful-fail"
-version = "0.3.0"
-description = "Self-healing API proxy for AI agents. Route your HTTP calls through Graceful Fail and get structured, LLM-powered fix instructions when APIs return errors."
+version = "0.4.0"
+description = "Self-healing API proxy for AI agents with x402 outcome-based pricing. Successes are free. Pay per successful heal in USDC."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.9"
@@ -20,6 +20,9 @@ keywords = [
     "langchain",
     "self-healing",
     "agent-reliability",
+    "x402",
+    "micropayments",
+    "usdc",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

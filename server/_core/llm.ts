@@ -1,5 +1,110 @@
 import { ENV } from "./env";
 
+// ── Claude (Anthropic) Native Provider ─────────────────────────────────────
+// When ANTHROPIC_API_KEY is set, use Claude directly for better structured
+// output support and to enable "hosted mode" (customers don't need their own key).
+
+async function invokeClaude(params: InvokeParams, overrides?: LLMOverrides): Promise<InvokeResult> {
+  const apiKey = overrides?.apiKey || process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
+
+  const model = overrides?.model || process.env.LLM_MODEL || "claude-sonnet-4-6";
+
+  // Convert messages: Claude uses top-level system, not system role in messages
+  let systemPrompt = "";
+  const claudeMessages: Array<{ role: "user" | "assistant"; content: string }> = [];
+  for (const msg of params.messages) {
+    const text = typeof msg.content === "string"
+      ? msg.content
+      : Array.isArray(msg.content)
+        ? msg.content.map(p => typeof p === "string" ? p : "text" in p ? p.text : "").join("\n")
+        : "";
+    if (msg.role === "system") {
+      systemPrompt += (systemPrompt ? "\n\n" : "") + text;
+    } else if (msg.role === "user" || msg.role === "assistant") {
+      claudeMessages.push({ role: msg.role, content: text });
+    }
+  }
+
+  // Build request body
+  const body: Record<string, unknown> = {
+    model,
+    max_tokens: params.maxTokens || params.max_tokens || 4096,
+    messages: claudeMessages,
+  };
+  // Use array format with cache_control — the system prompt (base + provider context)
+  // is the same across all error analyses for a given provider, so caching saves ~90%
+  if (systemPrompt) {
+    body.system = [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }];
+  }
+
+  // Convert response_format to Claude's output_config
+  const rf = params.responseFormat || params.response_format;
+  if (rf && rf.type === "json_schema" && "json_schema" in rf) {
+    body.output_config = {
+      format: {
+        type: "json_schema",
+        schema: rf.json_schema.schema,
+      },
+    };
+  }
+
+  const baseUrl = overrides?.baseUrl || "https://api.anthropic.com";
+  const response = await fetch(`${baseUrl}/v1/messages`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Claude API failed: ${response.status} ${response.statusText} – ${errorText}`);
+  }
+
+  const result = await response.json() as {
+    id: string;
+    content: Array<{ type: string; text?: string }>;
+    usage?: { input_tokens: number; output_tokens: number };
+    model: string;
+    stop_reason: string;
+  };
+
+  const textContent = result.content
+    .filter((b: { type: string }) => b.type === "text")
+    .map((b: { text?: string }) => b.text ?? "")
+    .join("");
+
+  // Convert to OpenAI-compatible InvokeResult shape for compatibility
+  return {
+    id: result.id,
+    created: Math.floor(Date.now() / 1000),
+    model: result.model,
+    choices: [{
+      index: 0,
+      message: { role: "assistant" as const, content: textContent },
+      finish_reason: result.stop_reason === "end_turn" ? "stop" : result.stop_reason,
+    }],
+    usage: result.usage ? {
+      prompt_tokens: result.usage.input_tokens,
+      completion_tokens: result.usage.output_tokens,
+      total_tokens: result.usage.input_tokens + result.usage.output_tokens,
+    } : undefined,
+  };
+}
+
+/** Whether to use Claude natively (hosted mode) vs OpenAI-compatible (BYOLLM) */
+function shouldUseClaude(overrides?: LLMOverrides): boolean {
+  // If the override points to a non-Anthropic base URL, use OpenAI path
+  if (overrides?.baseUrl && !overrides.baseUrl.includes("anthropic")) return false;
+  // If ANTHROPIC_API_KEY is set and no OpenAI key override, prefer Claude
+  if (overrides?.apiKey) return false; // BYOLLM mode — use OpenAI path
+  return !!process.env.ANTHROPIC_API_KEY;
+}
+
 export type Role = "system" | "user" | "assistant" | "tool" | "function";
 
 export type TextContent = {
@@ -272,6 +377,11 @@ export interface LLMOverrides {
 }
 
 export async function invokeLLM(params: InvokeParams, overrides?: LLMOverrides): Promise<InvokeResult> {
+  // Route to Claude when hosted mode is active (ANTHROPIC_API_KEY set, no BYOLLM override)
+  if (shouldUseClaude(overrides)) {
+    return invokeClaude(params, overrides);
+  }
+
   const apiKey = overrides?.apiKey || getApiKey();
 
   const {

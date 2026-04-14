@@ -10,4 +10,9 @@ export const ENV = {
   appUrl: process.env.APP_URL ?? "http://localhost:3000",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  // x402 Payment Protocol
+  x402ReceivingWallet: process.env.X402_RECEIVING_WALLET ?? "",
+  x402FacilitatorUrl: process.env.X402_FACILITATOR_URL ?? "https://x402.org/facilitator",
+  x402Networks: process.env.X402_NETWORKS ?? "base,base-sepolia",
+  x402Testnet: process.env.X402_TESTNET === "true",
 };

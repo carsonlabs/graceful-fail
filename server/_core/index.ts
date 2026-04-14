@@ -15,6 +15,9 @@ import { existsSync, readFileSync, mkdirSync, writeFileSync } from "fs";
 import path from "path";
 import { runScan } from "../scanEngine";
 import { rouletteRouter } from "../rouletteRouter";
+import { createX402Router } from "../x402Proxy";
+import { MonitoringRegistry } from "../monitoring";
+import { ResponseCache } from "../responseCache";
 
 // Resolve project root — works from both server/_core/ (dev) and dist/ (prod)
 const PROJECT_ROOT = process.env.NODE_ENV === "production"
@@ -62,6 +65,16 @@ async function startServer() {
 
   // API Roulette — chaos testing endpoint
   app.use(rouletteRouter);
+
+  // x402 outcome-based pricing — agent-native proxy + heal endpoints
+  const monitor = new MonitoringRegistry();
+  const responseCache = new ResponseCache(1000, 30_000);
+  const { router: x402Router, shutdown: x402Shutdown } = createX402Router({
+    monitor,
+    cache: responseCache,
+  });
+  app.use(x402Router);
+  monitor.startAlertLoop();
 
   // Badge — public, cacheable
   app.get("/badge.svg", (_req, res) => {
@@ -221,6 +234,16 @@ async function startServer() {
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
   });
+
+  // Graceful shutdown
+  const shutdown = () => {
+    console.log("Shutting down...");
+    x402Shutdown();
+    monitor.stopAlertLoop();
+    server.close();
+  };
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
 }
 
 startServer().catch(console.error);

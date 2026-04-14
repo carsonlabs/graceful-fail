@@ -9,72 +9,87 @@ import { toast } from "sonner";
 const SNIPPET_LANGS = ["curl", "python", "node", "typescript"] as const;
 type Lang = (typeof SNIPPET_LANGS)[number];
 
-function buildSnippet(lang: Lang, apiKey: string, destUrl: string, method: string, body: string): string {
+function buildSnippet(lang: Lang, destUrl: string, method: string, body: string): string {
   const hasBody = ["POST", "PUT", "PATCH"].includes(method);
-  const bodyStr = hasBody ? body : "";
 
   switch (lang) {
     case "curl":
       return [
-        `curl -X POST https://selfheal.dev/api/proxy \\`,
-        `  -H "Authorization: Bearer ${apiKey}" \\`,
-        `  -H "X-Destination-URL: ${destUrl}" \\`,
-        `  -H "X-Destination-Method: ${method}" \\`,
-        `  -H "Content-Type: application/json"` + (hasBody ? ` \\` : ""),
-        hasBody ? `  -d '${bodyStr}'` : "",
-      ].filter(Boolean).join("\n");
+        `curl -X POST https://selfheal.dev/api/x402/proxy \\`,
+        `  -H "Content-Type: application/json" \\`,
+        `  -d '${JSON.stringify({
+          url: destUrl,
+          method,
+          ...(hasBody ? { body } : {}),
+        })}'`,
+      ].join("\n");
 
     case "python":
-      return `import requests
+      return `import httpx
 
-response = requests.post(
-    "https://selfheal.dev/api/proxy",
-    headers={
-        "Authorization": "Bearer ${apiKey}",
-        "X-Destination-URL": "${destUrl}",
-        "X-Destination-Method": "${method}",
-        "Content-Type": "application/json",
-    },${hasBody ? `\n    json=${bodyStr},` : ""}
+response = httpx.post(
+    "https://selfheal.dev/api/x402/proxy",
+    json={
+        "url": "${destUrl}",
+        "method": "${method}",${hasBody ? `\n        "body": '${body}',` : ""}
+    },
 )
 
 data = response.json()
 
-if data.get("graceful_fail_intercepted"):
+if response.status_code == 402:
+    # Payment required — x402 spec returned
+    print("Payment required:", data["accepts"][0]["description"])
+    print("Price:", data["accepts"][0]["maxAmountRequired"], "USDC (atomic)")
+elif response.status_code == 200 and data.get("healed"):
+    # Error was healed (paid flow)
     analysis = data["error_analysis"]
-    print(f"Error: {analysis['human_readable_explanation']}")
-    print(f"Fix:   {analysis['actionable_fix_for_agent']}")
-    print(f"Retriable: {analysis['is_retriable']}")
+    print(f"Healed! Fix: {analysis['actionable_fix_for_agent']}")
 else:
+    # Success pass-through (free)
     print("Success:", data)`;
 
     case "node":
-      return `const response = await fetch("https://selfheal.dev/api/proxy", {
+      return `const response = await fetch("https://selfheal.dev/api/x402/proxy", {
   method: "POST",
-  headers: {
-    "Authorization": "Bearer ${apiKey}",
-    "X-Destination-URL": "${destUrl}",
-    "X-Destination-Method": "${method}",
-    "Content-Type": "application/json",
-  },${hasBody ? `\n  body: JSON.stringify(${bodyStr}),` : ""}
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    url: "${destUrl}",
+    method: "${method}",${hasBody ? `\n    body: '${body}',` : ""}
+  }),
 });
 
 const data = await response.json();
 
-if (data.graceful_fail_intercepted) {
-  const { error_analysis } = data;
-  console.log("Error:", error_analysis.human_readable_explanation);
-  console.log("Fix:  ", error_analysis.actionable_fix_for_agent);
-  console.log("Retriable:", error_analysis.is_retriable);
+if (response.status === 402) {
+  // Payment required — x402 spec returned
+  console.log("Price:", data.accepts[0].maxAmountRequired, "USDC");
+} else if (data.healed) {
+  // Error was healed
+  console.log("Fix:", data.error_analysis.actionable_fix_for_agent);
 } else {
+  // Success pass-through (free)
   console.log("Success:", data);
 }`;
 
     case "typescript":
-      return `interface GracefulFailResponse {
-  graceful_fail_intercepted: boolean;
-  original_status_code: number;
-  destination_url: string;
-  error_analysis?: {
+      return `interface X402PaymentRequired {
+  x402Version: 1;
+  accepts: {
+    scheme: "exact" | "upto";
+    network: string;
+    maxAmountRequired: string;
+    payTo: string;
+    description: string;
+  }[];
+  error: string;
+}
+
+interface HealedResponse {
+  healed: true;
+  settled: boolean;
+  txHash?: string;
+  error_analysis: {
     is_retriable: boolean;
     human_readable_explanation: string;
     actionable_fix_for_agent: string;
@@ -85,26 +100,25 @@ if (data.graceful_fail_intercepted) {
     };
     error_category: string;
   };
-  raw_destination_response?: unknown;
-  meta?: { credits_used: number; duration_ms: number; tier: string };
 }
 
-const response = await fetch("https://selfheal.dev/api/proxy", {
+const response = await fetch("https://selfheal.dev/api/x402/proxy", {
   method: "POST",
-  headers: {
-    "Authorization": "Bearer ${apiKey}",
-    "X-Destination-URL": "${destUrl}",
-    "X-Destination-Method": "${method}",
-    "Content-Type": "application/json",
-  },${hasBody ? `\n  body: JSON.stringify(${bodyStr}),` : ""}
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    url: "${destUrl}",
+    method: "${method}",${hasBody ? `\n    body: '${body}',` : ""}
+  }),
 });
 
-const data: GracefulFailResponse = await response.json();
-
-if (data.graceful_fail_intercepted && data.error_analysis) {
-  const { error_analysis } = data;
-  // Feed this directly to your AI agent
-  console.log(error_analysis.actionable_fix_for_agent);
+if (response.status === 402) {
+  const spec: X402PaymentRequired = await response.json();
+  // Agent pays via x402, then retries with X-PAYMENT header
+} else {
+  const data: HealedResponse = await response.json();
+  if (data.healed) {
+    console.log(data.error_analysis.actionable_fix_for_agent);
+  }
 }`;
   }
 }
@@ -158,37 +172,53 @@ function SectionHeading({ id, children }: { id: string; children: React.ReactNod
 
 export default function Docs() {
   const [lang, setLang] = useState<Lang>("curl");
-  const [apiKey, setApiKey] = useState("gf_your_api_key_here");
   const [destUrl, setDestUrl] = useState("https://api.example.com/users");
   const [method, setMethod] = useState("POST");
   const [body, setBody] = useState('{"name": "Alice"}');
 
-  const snippet = buildSnippet(lang, apiKey, destUrl, method, body);
+  const snippet = buildSnippet(lang, destUrl, method, body);
 
-  const errorResponseExample = JSON.stringify({
-    graceful_fail_intercepted: true,
+  const paymentRequiredExample = JSON.stringify({
+    x402Version: 1,
+    accepts: [
+      {
+        scheme: "exact",
+        network: "base-sepolia",
+        maxAmountRequired: "1000",
+        resource: "https://api.example.com/users",
+        description: "SelfHeal: error analysis + structured fix + retry payload [simple]",
+        mimeType: "application/json",
+        payTo: "0xYourWalletAddress",
+        requiredDeadlineSeconds: 300,
+        extra: { name: "USDC", token: "0x036CbD53842c5426634e7929541eC2318f3dCF7e" },
+      },
+    ],
+    error: "Payment required for error analysis. Tier: simple ($0.001\u2013$0.002 USDC).",
+  }, null, 2);
+
+  const healedResponseExample = JSON.stringify({
+    healed: true,
+    settled: true,
+    txHash: "0xabc123...",
     original_status_code: 422,
-    destination_url: "https://api.example.com/users",
     error_analysis: {
       is_retriable: false,
-      human_readable_explanation: "The request body is missing the required 'email' field. The API requires both 'name' and 'email' to create a user.",
-      actionable_fix_for_agent: "Add the 'email' field to the request body before retrying. The value must be a valid email address string.",
+      human_readable_explanation: "The request body is missing the required 'email' field.",
+      actionable_fix_for_agent: "Add the 'email' field to the request body.",
       suggested_payload_diff: {
         remove: [],
         add: { email: "string (valid email address)" },
         modify: {},
       },
-      error_category: "validation_error",
+      error_category: "validation",
     },
-    raw_destination_response: { error: "Unprocessable Entity", details: [{ field: "email", message: "is required" }] },
-    meta: { credits_used: 1, duration_ms: 312, tier: "hobby" },
+    meta: { tier: "simple", cost_usdc: 0.001, latency_ms: 312 },
   }, null, 2);
 
   const passthroughExample = JSON.stringify({
-    id: 42,
-    name: "Alice",
-    email: "alice@example.com",
-    created_at: "2026-03-26T14:00:00Z",
+    status: 200,
+    headers: { "content-type": "application/json" },
+    body: '{"id": 42, "name": "Alice", "email": "alice@example.com"}',
   }, null, 2);
 
   return (
@@ -230,14 +260,15 @@ export default function Docs() {
           <nav className="sticky top-24 space-y-1">
             {[
               { id: "overview", label: "Overview" },
-              { id: "authentication", label: "Authentication" },
-              { id: "endpoint", label: "Endpoint" },
-              { id: "headers", label: "Request Headers" },
+              { id: "x402-flow", label: "x402 Payment Flow" },
+              { id: "endpoints", label: "Endpoints" },
+              { id: "request-body", label: "Request Body" },
               { id: "responses", label: "Response Schema" },
               { id: "error-categories", label: "Error Categories" },
               { id: "code-examples", label: "Code Examples" },
               { id: "sdks", label: "SDKs" },
-              { id: "rate-limits", label: "Rate Limits" },
+              { id: "pricing", label: "Pricing" },
+              { id: "legacy-api", label: "Legacy API (v1)" },
               { id: "openapi", label: "OpenAPI Spec" },
             ].map(({ id, label }) => (
               <a
@@ -256,29 +287,29 @@ export default function Docs() {
           {/* Hero */}
           <div className="mb-10">
             <div className="inline-flex items-center gap-1.5 text-xs font-mono bg-primary/10 text-primary border border-primary/20 rounded-full px-3 py-1 mb-4">
-              v1.0 · REST API
+              v2.0 · x402 Agent-Native API
             </div>
             <h1 className="text-4xl font-bold text-foreground mb-3">API Reference</h1>
             <p className="text-lg text-muted-foreground max-w-2xl">
-              SelfHeal is a single-endpoint proxy that sits between your AI agent and any third-party API.
-              On success, it passes the response through with zero overhead. On failure, it returns a structured,
-              LLM-generated analysis that tells your agent exactly what went wrong and how to fix it.
+              SelfHeal is an agent-native API proxy with outcome-based pricing. Agents send requests through the proxy
+              and only pay (in USDC via x402 micropayments) when an error is successfully healed. Successes pass through free.
+              No API keys. No subscriptions.
             </p>
           </div>
 
           {/* Overview */}
           <SectionHeading id="overview">Overview</SectionHeading>
           <p className="text-muted-foreground text-sm leading-relaxed mb-4">
-            Instead of your agent receiving a raw <code className="font-mono bg-muted px-1 rounded text-xs">422 Unprocessable Entity</code> and
-            halting, SelfHeal intercepts the error, strips sensitive headers, sends the context to an LLM,
-            and returns a structured JSON envelope your agent can act on immediately — including whether to retry,
-            what field to change, and a plain-English explanation.
+            Your agent sends a request to <code className="font-mono bg-muted px-1 rounded text-xs">POST /api/x402/proxy</code> with the target URL in the JSON body.
+            If the target returns a success (2xx/3xx), SelfHeal passes it through for free. If it fails (4xx/5xx),
+            SelfHeal returns an x402 payment spec. The agent pays, retries with a payment proof, and gets LLM-powered
+            fix instructions — but only gets charged if the heal succeeds.
           </p>
           <div className="grid sm:grid-cols-3 gap-4 mb-6">
             {[
-              { label: "Pass-through latency", value: "< 5ms", desc: "On 2xx/3xx responses" },
-              { label: "Error analysis", value: "~300ms", desc: "LLM call on 4xx/5xx" },
-              { label: "Credit cost", value: "1 credit", desc: "Only on intercepted errors" },
+              { label: "Pass-through latency", value: "< 200ms", desc: "On 2xx/3xx responses" },
+              { label: "Heal analysis", value: "~300ms", desc: "LLM-powered on 4xx/5xx" },
+              { label: "Cost per heal", value: "$0.001\u2013$0.005", desc: "USDC, only on success" },
             ].map(({ label, value, desc }) => (
               <div key={label} className="rounded-lg border border-border bg-card px-4 py-3">
                 <p className="text-xs text-muted-foreground">{label}</p>
@@ -288,47 +319,76 @@ export default function Docs() {
             ))}
           </div>
 
-          {/* Authentication */}
-          <SectionHeading id="authentication">Authentication</SectionHeading>
-          <p className="text-sm text-muted-foreground mb-3">
-            All requests must include your API key as a Bearer token in the <code className="font-mono bg-muted px-1 rounded text-xs">Authorization</code> header.
-            API keys are created in the <Link href="/dashboard/keys" className="text-primary underline">Dashboard → API Keys</Link> section.
-            The full key is shown only once at creation time — store it securely.
-          </p>
-          <CodeBlock code={`Authorization: Bearer gf_your_api_key_here`} className="mb-4" />
-
-          {/* Endpoint */}
-          <SectionHeading id="endpoint">Endpoint</SectionHeading>
-          <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 mb-4 font-mono text-sm">
-            <span className="text-xs font-bold bg-primary/10 text-primary border border-primary/20 rounded px-2 py-0.5">POST</span>
-            <span className="text-foreground">/api/proxy</span>
-          </div>
+          {/* x402 Payment Flow */}
+          <SectionHeading id="x402-flow">x402 Payment Flow</SectionHeading>
           <p className="text-sm text-muted-foreground mb-4">
-            This is the only endpoint. The destination URL, HTTP method, and any destination-specific headers are
-            passed as request headers rather than path parameters, so your agent can use a single, stable URL for all proxied calls.
+            SelfHeal uses the <a href="https://x402.org" target="_blank" rel="noopener noreferrer" className="text-primary underline">x402 protocol</a> for
+            machine-to-machine micropayments. No API keys, no accounts — just USDC on Base.
           </p>
+          <div className="space-y-3 mb-6">
+            {[
+              { step: "1", title: "Agent sends request", desc: "POST to /api/x402/proxy with target URL in JSON body." },
+              { step: "2", title: "Target succeeds (2xx)", desc: "Response passed through free. Zero cost." },
+              { step: "3", title: "Target fails (4xx/5xx)", desc: "SelfHeal returns HTTP 402 with an x402 payment spec (price, wallet, network)." },
+              { step: "4", title: "Agent pays", desc: "Agent sends USDC micropayment and retries with X-PAYMENT header containing the proof." },
+              { step: "5", title: "Heal runs", desc: "SelfHeal verifies payment, runs LLM analysis, returns structured fix instructions." },
+              { step: "6", title: "Settlement", desc: "Payment is settled only if the heal succeeds. Failed analyses are never charged." },
+            ].map(({ step, title, desc }) => (
+              <div key={step} className="flex gap-3 items-start">
+                <div className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{step}</div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{title}</p>
+                  <p className="text-xs text-muted-foreground">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
 
-          {/* Headers */}
-          <SectionHeading id="headers">Request Headers</SectionHeading>
+          {/* Endpoints */}
+          <SectionHeading id="endpoints">Endpoints</SectionHeading>
+          <div className="space-y-3 mb-6">
+            {[
+              { method: "POST", path: "/api/x402/proxy", desc: "Proxy a request with x402 payment on failure" },
+              { method: "POST", path: "/api/x402/heal", desc: "Direct heal — submit an error for analysis" },
+              { method: "GET", path: "/api/x402/pricing", desc: "Current pricing tiers" },
+              { method: "GET", path: "/api/x402/usage", desc: "Usage stats (heals, payments, latency)" },
+              { method: "GET", path: "/metrics", desc: "Prometheus metrics scrape endpoint" },
+              { method: "GET", path: "/health", desc: "Health check" },
+            ].map(({ method: m, path, desc }) => (
+              <div key={path} className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-2.5">
+                <span className={`text-xs font-bold border rounded px-2 py-0.5 ${m === "POST" ? "bg-primary/10 text-primary border-primary/20" : "bg-blue-500/10 text-blue-400 border-blue-500/20"}`}>{m}</span>
+                <span className="font-mono text-sm text-foreground">{path}</span>
+                <span className="text-xs text-muted-foreground ml-auto hidden sm:block">{desc}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Request Body */}
+          <SectionHeading id="request-body">Request Body</SectionHeading>
+          <p className="text-sm text-muted-foreground mb-3">
+            Send a JSON body to <code className="font-mono bg-muted px-1 rounded text-xs">POST /api/x402/proxy</code> with the target request details.
+          </p>
           <div className="overflow-x-auto mb-4">
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-2 pr-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Header</th>
+                  <th className="text-left py-2 pr-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Field</th>
+                  <th className="text-left py-2 pr-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Type</th>
                   <th className="text-left py-2 pr-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Required</th>
                   <th className="text-left py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Description</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {[
-                  { header: "Authorization", required: true, desc: "Bearer token. Format: Bearer gf_..." },
-                  { header: "X-Destination-URL", required: true, desc: "Full URL of the target API endpoint" },
-                  { header: "X-Destination-Method", required: false, desc: "HTTP method to use for the destination request. Defaults to POST" },
-                  { header: "Content-Type", required: false, desc: "Pass application/json when sending a body. Forwarded to the destination" },
-                  { header: "Any other header", required: false, desc: "All other headers are forwarded to the destination as-is, except Authorization (stripped for security)" },
-                ].map(({ header, required, desc }) => (
-                  <tr key={header} className="hover:bg-muted/30 transition-colors">
-                    <td className="py-2.5 pr-4 font-mono text-xs text-foreground whitespace-nowrap">{header}</td>
+                  { field: "url", type: "string", required: true, desc: "Full URL of the target API endpoint" },
+                  { field: "method", type: "string", required: false, desc: "HTTP method (default: GET)" },
+                  { field: "headers", type: "object", required: false, desc: "Headers to forward to the target" },
+                  { field: "body", type: "string", required: false, desc: "Request body to forward" },
+                  { field: "timeoutMs", type: "number", required: false, desc: "Timeout in milliseconds (default: 30000)" },
+                ].map(({ field, type, required, desc }) => (
+                  <tr key={field} className="hover:bg-muted/30 transition-colors">
+                    <td className="py-2.5 pr-4 font-mono text-xs text-foreground whitespace-nowrap">{field}</td>
+                    <td className="py-2.5 pr-4 font-mono text-xs text-primary">{type}</td>
                     <td className="py-2.5 pr-4">
                       <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${required ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
                         {required ? "Required" : "Optional"}
@@ -340,71 +400,43 @@ export default function Docs() {
               </tbody>
             </table>
           </div>
+          <p className="text-sm text-muted-foreground mb-3">
+            To include an x402 payment proof (after receiving a 402), add the <code className="font-mono bg-muted px-1 rounded text-xs">X-PAYMENT</code> header.
+          </p>
 
           {/* Responses */}
           <SectionHeading id="responses">Response Schema</SectionHeading>
           <p className="text-sm text-muted-foreground mb-3">
-            SelfHeal returns two types of responses depending on the destination API's status code.
+            SelfHeal returns three types of responses depending on the outcome.
           </p>
 
-          <h3 className="text-sm font-semibold text-foreground mb-2 mt-5">Pass-through (2xx / 3xx)</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-2 mt-5">Pass-through (target returned 2xx/3xx) — FREE</h3>
           <p className="text-xs text-muted-foreground mb-2">
-            The destination response body is returned verbatim. No credits are consumed. The response status code mirrors the destination.
+            The target response is wrapped in a JSON envelope. Zero cost.
           </p>
           <CodeBlock code={passthroughExample} className="mb-5" />
 
-          <h3 className="text-sm font-semibold text-foreground mb-2">Intercepted Error (4xx / 5xx)</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Payment Required (target failed, no payment) — 402</h3>
           <p className="text-xs text-muted-foreground mb-2">
-            The response status code mirrors the destination. The body is the SelfHeal envelope below. One credit is consumed.
+            Returns an x402 payment spec. The agent reads the price, pays, and retries with <code className="font-mono bg-muted px-1 rounded text-xs">X-PAYMENT</code> header.
           </p>
-          <CodeBlock code={errorResponseExample} className="mb-4" />
+          <CodeBlock code={paymentRequiredExample} className="mb-5" />
 
-          <div className="overflow-x-auto mb-4">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-2 pr-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Field</th>
-                  <th className="text-left py-2 pr-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Type</th>
-                  <th className="text-left py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Description</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {[
-                  { field: "graceful_fail_intercepted", type: "boolean", desc: "Always true for intercepted errors" },
-                  { field: "original_status_code", type: "number", desc: "HTTP status code returned by the destination" },
-                  { field: "error_analysis.is_retriable", type: "boolean", desc: "Whether retrying the same request may succeed (e.g. 429, 503)" },
-                  { field: "error_analysis.human_readable_explanation", type: "string", desc: "Plain-English explanation of what went wrong" },
-                  { field: "error_analysis.actionable_fix_for_agent", type: "string", desc: "Exact instruction for the agent on how to correct the request" },
-                  { field: "error_analysis.suggested_payload_diff.remove", type: "string[]", desc: "Fields to remove from the request body" },
-                  { field: "error_analysis.suggested_payload_diff.add", type: "object", desc: "Fields to add, with expected type as value" },
-                  { field: "error_analysis.suggested_payload_diff.modify", type: "object", desc: "Fields to change, with suggested new value" },
-                  { field: "error_analysis.error_category", type: "string", desc: "One of the error categories listed below" },
-                  { field: "raw_destination_response", type: "unknown", desc: "The original response body from the destination API" },
-                  { field: "meta.credits_used", type: "number", desc: "Number of credits consumed (1 for intercepted errors)" },
-                  { field: "meta.duration_ms", type: "number", desc: "Total proxy round-trip time in milliseconds" },
-                  { field: "meta.tier", type: "string", desc: "The API key tier used for this request" },
-                ].map(({ field, type, desc }) => (
-                  <tr key={field} className="hover:bg-muted/30 transition-colors">
-                    <td className="py-2.5 pr-4 font-mono text-xs text-foreground whitespace-nowrap">{field}</td>
-                    <td className="py-2.5 pr-4 font-mono text-xs text-primary">{type}</td>
-                    <td className="py-2.5 text-xs text-muted-foreground">{desc}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Healed (target failed, payment verified, heal succeeded) — 200</h3>
+          <p className="text-xs text-muted-foreground mb-2">
+            Payment is settled and the agent receives structured fix instructions.
+          </p>
+          <CodeBlock code={healedResponseExample} className="mb-4" />
 
           {/* Error categories */}
           <SectionHeading id="error-categories">Error Categories</SectionHeading>
           <div className="grid sm:grid-cols-2 gap-3 mb-4">
             {[
-              { cat: "validation_error", desc: "Missing or malformed request fields (400, 422)" },
-              { cat: "authentication_error", desc: "Invalid or missing credentials (401)" },
-              { cat: "authorization_error", desc: "Valid credentials but insufficient permissions (403)" },
+              { cat: "validation", desc: "Missing or malformed request fields (400, 422)" },
+              { cat: "auth", desc: "Invalid or missing credentials (401, 403)" },
               { cat: "not_found", desc: "Resource does not exist at the given path (404)" },
               { cat: "rate_limit", desc: "Too many requests; safe to retry after a delay (429)" },
               { cat: "server_error", desc: "Destination server-side failure (500, 502, 503)" },
-              { cat: "timeout", desc: "Destination did not respond in time" },
               { cat: "unknown", desc: "Error could not be classified into a known category" },
             ].map(({ cat, desc }) => (
               <div key={cat} className="rounded-lg border border-border bg-card px-3 py-2.5">
@@ -417,7 +449,7 @@ export default function Docs() {
           {/* Code examples */}
           <SectionHeading id="code-examples">Code Examples</SectionHeading>
           <p className="text-sm text-muted-foreground mb-4">
-            Customize the snippet below with your own values, then copy it directly into your agent or workflow.
+            Customize the snippet below with your target URL and method, then copy it into your agent.
           </p>
 
           {/* Customizer */}
@@ -425,16 +457,7 @@ export default function Docs() {
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Customize snippet</p>
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-muted-foreground block mb-1">API Key</label>
-                <input
-                  className="w-full text-xs font-mono bg-muted border border-border rounded px-2 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="gf_your_api_key_here"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground block mb-1">Destination URL</label>
+                <label className="text-xs text-muted-foreground block mb-1">Target URL</label>
                 <input
                   className="w-full text-xs font-mono bg-muted border border-border rounded px-2 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                   value={destUrl}
@@ -454,7 +477,7 @@ export default function Docs() {
                 </select>
               </div>
               {["POST", "PUT", "PATCH"].includes(method) && (
-                <div>
+                <div className="sm:col-span-2">
                   <label className="text-xs text-muted-foreground block mb-1">Request Body (JSON)</label>
                   <input
                     className="w-full text-xs font-mono bg-muted border border-border rounded px-2 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -488,14 +511,14 @@ export default function Docs() {
           {/* SDKs */}
           <SectionHeading id="sdks">Official SDKs</SectionHeading>
           <p className="text-sm text-muted-foreground mb-4">
-            Official SDKs wrap the proxy endpoint with typed clients, error handling, and framework integrations.
-            Use these instead of raw HTTP for a better developer experience.
+            Official SDKs handle the x402 payment flow automatically — detect 402, pay, retry.
+            Use these instead of raw HTTP for a single-line integration.
           </p>
           <div className="grid sm:grid-cols-2 gap-4 mb-4">
             <div className="rounded-lg border border-border bg-card px-4 py-3">
               <p className="text-sm font-semibold text-foreground mb-1">Python</p>
               <CodeBlock code={`pip install 'graceful-fail[langchain]'`} className="mb-2" />
-              <p className="text-xs text-muted-foreground">Sync + async client, LangChain tool, CrewAI compatible, requests-style session wrapper.</p>
+              <p className="text-xs text-muted-foreground">Sync + async client, LangChain tool, CrewAI compatible.</p>
               <a href="https://pypi.org/project/graceful-fail/" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline mt-1 inline-block">
                 View on PyPI
               </a>
@@ -503,66 +526,69 @@ export default function Docs() {
             <div className="rounded-lg border border-border bg-card px-4 py-3">
               <p className="text-sm font-semibold text-foreground mb-1">Node.js / TypeScript</p>
               <CodeBlock code={`npm install graceful-fail`} className="mb-2" />
-              <p className="text-xs text-muted-foreground">Full TypeScript types, LangChain.js tool, ESM + CJS, native fetch (zero deps).</p>
+              <p className="text-xs text-muted-foreground">Full TypeScript types, LangChain.js tool, ESM + CJS.</p>
               <a href="https://www.npmjs.com/package/graceful-fail" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline mt-1 inline-block">
                 View on npm
               </a>
             </div>
           </div>
-          <div className="rounded-lg border border-border bg-card px-4 py-3 mb-8">
-            <p className="text-sm font-semibold text-foreground mb-2">Also available</p>
-            <div className="grid sm:grid-cols-3 gap-3">
-              {[
-                { name: "n8n Node", desc: "Community node for n8n workflows" },
-                { name: "GitHub Action", desc: "CI/CD integration with one line" },
-                { name: "Postman Collection", desc: "Import and test instantly" },
-              ].map(({ name, desc }) => (
-                <div key={name}>
-                  <p className="text-xs font-medium text-foreground">{name}</p>
-                  <p className="text-xs text-muted-foreground">{desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Rate limits */}
-          <SectionHeading id="rate-limits">Rate Limits</SectionHeading>
-          <div className="overflow-x-auto mb-8">
+          {/* Pricing */}
+          <SectionHeading id="pricing">Pricing</SectionHeading>
+          <p className="text-sm text-muted-foreground mb-3">
+            Outcome-based pricing via x402 micropayments in USDC. No subscriptions, no API keys.
+          </p>
+          <div className="overflow-x-auto mb-4">
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left py-2 pr-6 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tier</th>
-                  <th className="text-left py-2 pr-6 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Monthly Requests</th>
-                  <th className="text-left py-2 pr-6 text-xs font-semibold text-muted-foreground uppercase tracking-wide">LLM Credits</th>
-                  <th className="text-left py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Price</th>
+                  <th className="text-left py-2 pr-6 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Error Types</th>
+                  <th className="text-left py-2 pr-6 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Price (USDC)</th>
+                  <th className="text-left py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Charged When</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {[
-                  { tier: "Hobby", requests: "500", credits: "500", price: "Free" },
-                  { tier: "Pro", requests: "10,000", credits: "10,000", price: "$149 / month" },
-                  { tier: "Agency", requests: "50,000", credits: "50,000", price: "$349 / month" },
-                ].map(({ tier, requests, credits, price }) => (
+                  { tier: "Pass-through", errors: "2xx/3xx (success)", price: "$0.00", when: "Never" },
+                  { tier: "Simple", errors: "400, 404, 405, 422", price: "$0.001", when: "Heal succeeds" },
+                  { tier: "Moderate", errors: "500, 502, 503, timeout", price: "$0.002", when: "Heal succeeds" },
+                  { tier: "Complex", errors: "429, 403, auth errors", price: "$0.003\u2013$0.005", when: "Heal succeeds" },
+                ].map(({ tier, errors, price, when }) => (
                   <tr key={tier} className="hover:bg-muted/30 transition-colors">
                     <td className="py-2.5 pr-6 text-sm font-medium text-foreground">{tier}</td>
-                    <td className="py-2.5 pr-6 text-sm text-muted-foreground font-mono">{requests}</td>
-                    <td className="py-2.5 pr-6 text-sm text-muted-foreground font-mono">{credits}</td>
-                    <td className="py-2.5 text-sm text-primary font-medium">{price}</td>
+                    <td className="py-2.5 pr-6 text-sm text-muted-foreground font-mono">{errors}</td>
+                    <td className="py-2.5 pr-6 text-sm text-primary font-medium">{price}</td>
+                    <td className="py-2.5 text-sm text-muted-foreground">{when}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          <p className="text-xs text-muted-foreground mb-2">
+            Networks: Base (mainnet) and Base Sepolia (testnet). Solana support coming soon.
+          </p>
           <p className="text-xs text-muted-foreground">
-            Credits are only consumed when a request is intercepted (4xx/5xx). Successful pass-through requests (2xx/3xx) do not consume credits.
-            When the monthly limit is reached, the proxy returns <code className="font-mono bg-muted px-1 rounded">HTTP 429</code> with an <code className="font-mono bg-muted px-1 rounded">upgrade_url</code> field.
+            Rate limits: 30 req/min (free tier), 300 req/min (with valid x402 payment proof).
+          </p>
+
+          {/* Legacy API */}
+          <SectionHeading id="legacy-api">Legacy API (v1)</SectionHeading>
+          <p className="text-sm text-muted-foreground mb-3">
+            The original <code className="font-mono bg-muted px-1 rounded text-xs">POST /api/proxy</code> endpoint
+            with API key authentication is still available for backward compatibility.
+            It uses <code className="font-mono bg-muted px-1 rounded text-xs">Authorization: Bearer gf_...</code> and
+            <code className="font-mono bg-muted px-1 rounded text-xs">X-Destination-URL</code> headers.
+            See the <Link href="/dashboard/keys" className="text-primary underline">Dashboard</Link> for API key management.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            New integrations should use the x402 endpoints above.
           </p>
 
           {/* OpenAPI Spec */}
           <SectionHeading id="openapi">OpenAPI Spec</SectionHeading>
           <p className="text-sm text-muted-foreground mb-4">
             A machine-readable OpenAPI 3.1 specification is available for import into Postman, Insomnia, or any OpenAPI-compatible tool.
-            The spec is always up-to-date as it is generated dynamically from the live server.
           </p>
           <div className="flex flex-wrap gap-3 mb-5">
             <a href="/api/openapi.json" target="_blank" rel="noopener noreferrer">
@@ -571,38 +597,6 @@ export default function Docs() {
                 Download openapi.json
               </Button>
             </a>
-          </div>
-          <div className="space-y-4">
-            {[
-              {
-                tool: "Postman",
-                steps: [
-                  "Open Postman and click Import in the top-left",
-                  'Select "Link" and paste: ' + window.location.origin + "/api/openapi.json",
-                  "Click Continue then Import — all endpoints and schemas are ready",
-                ],
-              },
-              {
-                tool: "Insomnia",
-                steps: [
-                  "Open Insomnia and click Create → Import From URL",
-                  'Paste: ' + window.location.origin + "/api/openapi.json",
-                  "Click Fetch and Import — the proxy endpoint appears in your collection",
-                ],
-              },
-            ].map(({ tool, steps }) => (
-              <div key={tool} className="rounded-lg border border-border bg-card px-4 py-3">
-                <p className="text-sm font-semibold text-foreground mb-2">{tool}</p>
-                <ol className="space-y-1">
-                  {steps.map((step, i) => (
-                    <li key={i} className="text-xs text-muted-foreground flex gap-2">
-                      <span className="text-primary font-mono shrink-0">{i + 1}.</span>
-                      <span>{step}</span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            ))}
           </div>
         </main>
       </div>

@@ -4,12 +4,17 @@
  * Provides a Tool that routes HTTP calls through the proxy,
  * returning structured fix instructions on errors.
  *
- * @example
+ * @example x402 mode (default)
  * ```ts
  * import { GracefulFailTool } from "graceful-fail/langchain";
  *
+ * const tool = new GracefulFailTool();
+ * // Add to your agent's tool list — no API key needed
+ * ```
+ *
+ * @example Legacy mode
+ * ```ts
  * const tool = new GracefulFailTool({ apiKey: "gf_your_key" });
- * // Add to your agent's tool list
  * ```
  */
 import { StructuredTool } from "@langchain/core/tools";
@@ -34,7 +39,30 @@ const inputSchema = z.object({
 });
 
 function formatResponse(resp: GracefulFailResponse): string {
-  // Auto-fixed: SelfHeal patched the payload and retried successfully
+  // x402 healed
+  if (resp.healed && resp.errorAnalysis) {
+    const ea = resp.errorAnalysis;
+    const parts = [
+      `HEALED via x402 (HTTP ${resp.statusCode}, category: ${ea.error_category})`,
+      `Explanation: ${ea.human_readable_explanation}`,
+      `Fix: ${ea.actionable_fix_for_agent}`,
+    ];
+    if (resp.settled) parts.push(`Payment settled. TX: ${resp.txHash ?? "pending"}`);
+    return parts.join("\n");
+  }
+
+  // x402 payment required (no callback provided)
+  if (resp.paymentRequired) {
+    const accept = resp.paymentRequired.accepts[0];
+    return [
+      `PAYMENT REQUIRED (x402)`,
+      `Error: ${resp.paymentRequired.error}`,
+      `Price: ${accept?.maxAmountRequired ?? "?"} atomic USDC on ${accept?.network ?? "base"}`,
+      `Pay to: ${accept?.payTo ?? "?"}`,
+    ].join("\n");
+  }
+
+  // Legacy auto-fixed
   if (resp.autoFixed && resp.errorAnalysis) {
     const ea = resp.errorAnalysis;
     const parts = [
@@ -48,7 +76,7 @@ function formatResponse(resp: GracefulFailResponse): string {
     return parts.join("\n");
   }
 
-  // Intercepted but not auto-fixed
+  // Legacy intercepted
   if (resp.intercepted && resp.errorAnalysis) {
     const ea = resp.errorAnalysis;
     const parts = [
@@ -58,15 +86,9 @@ function formatResponse(resp: GracefulFailResponse): string {
       `Fix: ${ea.actionable_fix_for_agent}`,
     ];
     const diff = ea.suggested_payload_diff;
-    if (diff.remove.length > 0) {
-      parts.push(`Remove fields: ${JSON.stringify(diff.remove)}`);
-    }
-    if (Object.keys(diff.add).length > 0) {
-      parts.push(`Add fields: ${JSON.stringify(diff.add)}`);
-    }
-    if (Object.keys(diff.modify).length > 0) {
-      parts.push(`Modify fields: ${JSON.stringify(diff.modify)}`);
-    }
+    if (diff.remove.length > 0) parts.push(`Remove fields: ${JSON.stringify(diff.remove)}`);
+    if (Object.keys(diff.add).length > 0) parts.push(`Add fields: ${JSON.stringify(diff.add)}`);
+    if (Object.keys(diff.modify).length > 0) parts.push(`Modify fields: ${JSON.stringify(diff.modify)}`);
     return parts.join("\n");
   }
 
@@ -74,10 +96,12 @@ function formatResponse(resp: GracefulFailResponse): string {
 }
 
 export interface GracefulFailToolOptions {
-  /** Your Graceful Fail API key. */
-  apiKey: string;
+  /** Your Graceful Fail API key. Omit for x402 mode (recommended). */
+  apiKey?: string;
   /** Base URL of the proxy. Defaults to https://selfheal.dev */
   baseUrl?: string;
+  /** x402 payment callback. Return payment proof string or null. */
+  onPaymentRequired?: (info: any) => Promise<string | null>;
 }
 
 /**
@@ -89,19 +113,20 @@ export interface GracefulFailToolOptions {
 export class GracefulFailTool extends StructuredTool {
   name = "graceful_fail_http";
   description =
-    "Make an HTTP request to any API through the Graceful Fail proxy. " +
+    "Make an HTTP request to any API through the SelfHeal proxy. " +
     "If the API returns an error (4xx/5xx), you will receive structured " +
     "fix instructions explaining exactly what went wrong and how to " +
-    "correct your request. Use this for all external API calls.";
+    "correct your request. Successes are free. Errors cost $0.001-$0.005 USDC via x402.";
   schema = inputSchema;
 
   private client: GracefulFail;
 
-  constructor(options: GracefulFailToolOptions) {
+  constructor(options: GracefulFailToolOptions = {}) {
     super();
     this.client = new GracefulFail({
       apiKey: options.apiKey,
       baseUrl: options.baseUrl,
+      onPaymentRequired: options.onPaymentRequired,
     });
   }
 

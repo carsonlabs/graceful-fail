@@ -5,6 +5,8 @@ import type {
   GracefulFailResponse,
   InterceptedEnvelope,
   RequestOptions,
+  X402HealedResponse,
+  X402PaymentRequired,
 } from "./types.js";
 
 const DEFAULT_BASE_URL = "https://selfheal.dev";
@@ -13,54 +15,61 @@ const DEFAULT_TIMEOUT = 30_000;
 /**
  * Graceful Fail client for Node.js and the browser.
  *
- * Routes HTTP requests through the Graceful Fail proxy. On success,
- * returns the destination response. On error, returns structured
- * LLM-powered fix instructions.
+ * Supports two modes:
+ * - **x402 mode** (default): No API key needed. Uses `/api/x402/proxy`.
+ *   Successes are free. Failures return 402 → agent pays → gets heal.
+ * - **Legacy mode**: Pass `apiKey` to use `/api/proxy` with API key auth.
  *
- * @example
+ * @example x402 mode (recommended)
  * ```ts
  * import { GracefulFail } from "graceful-fail";
  *
- * const gf = new GracefulFail({ apiKey: "gf_your_key" });
- *
- * const resp = await gf.post("https://api.openai.com/v1/chat/completions", {
- *   json: { model: "gpt-4o-mini", messages: [{ role: "user", content: "Hi" }] },
- *   headers: { Authorization: "Bearer sk-..." },
+ * const gf = new GracefulFail({
+ *   onPaymentRequired: async (info) => {
+ *     // Your x402 payment logic here
+ *     return paymentProof;
+ *   },
  * });
  *
- * if (resp.autoFixed) {
- *   // SelfHeal detected an error, fixed the payload, and retried successfully
- *   console.log("Auto-fixed!", resp.data);
- *   console.log("What was wrong:", resp.errorAnalysis!.human_readable_explanation);
- *   console.log("What was changed:", resp.appliedDiff);
- * } else if (resp.intercepted) {
- *   // Error detected but couldn't be auto-fixed (e.g. auth error)
- *   console.log(resp.errorAnalysis!.actionable_fix_for_agent);
+ * const resp = await gf.post("https://api.example.com/users", {
+ *   json: { name: "Alice" },
+ * });
+ *
+ * if (resp.healed) {
+ *   console.log("Fix:", resp.errorAnalysis!.actionable_fix_for_agent);
  * } else {
- *   // Success — passed through transparently
- *   console.log(resp.data);
+ *   console.log("Success:", resp.data);
  * }
+ * ```
+ *
+ * @example Legacy mode (API key)
+ * ```ts
+ * const gf = new GracefulFail({ apiKey: "gf_your_key" });
+ * const resp = await gf.post(url, { json: payload });
  * ```
  */
 export class GracefulFail {
-  private apiKey: string;
+  private apiKey?: string;
   private baseUrl: string;
   private timeout: number;
   private autoRetry: boolean;
+  private onPaymentRequired?: (info: X402PaymentRequired) => Promise<string | null>;
   private llmHeaders: Record<string, string>;
 
-  constructor(options: GracefulFailOptions) {
-    if (!options.apiKey) {
-      throw new Error("apiKey is required");
-    }
+  constructor(options: GracefulFailOptions = {}) {
     this.apiKey = options.apiKey;
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
     this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
     this.autoRetry = options.autoRetry ?? true;
+    this.onPaymentRequired = options.onPaymentRequired;
     this.llmHeaders = {};
     if (options.llmApiKey) this.llmHeaders["X-LLM-API-Key"] = options.llmApiKey;
     if (options.llmModel) this.llmHeaders["X-LLM-Model"] = options.llmModel;
     if (options.llmBaseUrl) this.llmHeaders["X-LLM-Base-URL"] = options.llmBaseUrl;
+  }
+
+  private get isX402Mode(): boolean {
+    return !this.apiKey;
   }
 
   /**
@@ -70,6 +79,180 @@ export class GracefulFail {
     method: string,
     url: string,
     options: RequestOptions = {},
+  ): Promise<GracefulFailResponse<T>> {
+    if (this.isX402Mode) {
+      return this.requestX402<T>(method, url, options);
+    }
+    return this.requestLegacy<T>(method, url, options);
+  }
+
+  // ── x402 mode ──────────────────────────────────────────────────────────
+
+  private async requestX402<T>(
+    method: string,
+    url: string,
+    options: RequestOptions,
+  ): Promise<GracefulFailResponse<T>> {
+    let bodyStr: string | undefined;
+    if (options.json !== undefined) {
+      bodyStr = JSON.stringify(options.json);
+    } else if (options.body !== undefined) {
+      bodyStr = options.body;
+    }
+
+    const proxyBody = JSON.stringify({
+      url,
+      method: method.toUpperCase(),
+      headers: options.headers,
+      body: bodyStr,
+    });
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeout);
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/api/x402/proxy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: proxyBody,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      throw new ProxyError(
+        `Failed to reach SelfHeal proxy: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+
+    // Success pass-through (free)
+    if (response.ok) {
+      const body = await response.json();
+      // x402 healed response
+      if (body && typeof body === "object" && "healed" in body && body.healed) {
+        const healed = body as X402HealedResponse;
+        return {
+          statusCode: healed.original_status_code,
+          intercepted: true,
+          autoFixed: false,
+          healed: true,
+          data: body as T,
+          errorAnalysis: healed.error_analysis,
+          rawResponse: healed.raw_destination_response,
+          creditsUsed: healed.meta?.cost_usdc ?? 0,
+          durationMs: healed.meta?.latency_ms ?? 0,
+          settled: healed.settled,
+          txHash: healed.txHash,
+        };
+      }
+      // Plain pass-through
+      return {
+        statusCode: response.status,
+        intercepted: false,
+        autoFixed: false,
+        healed: false,
+        data: body as T,
+        creditsUsed: 0,
+        durationMs: 0,
+      };
+    }
+
+    // 402 — payment required
+    if (response.status === 402) {
+      const paymentSpec = (await response.json()) as X402PaymentRequired;
+
+      if (this.onPaymentRequired) {
+        const proof = await this.onPaymentRequired(paymentSpec);
+        if (proof) {
+          return this.retryWithPayment<T>(proxyBody, proof);
+        }
+      }
+
+      // No payment callback or callback returned null
+      return {
+        statusCode: 402,
+        intercepted: false,
+        autoFixed: false,
+        healed: false,
+        data: paymentSpec as T,
+        creditsUsed: 0,
+        durationMs: 0,
+        paymentRequired: paymentSpec,
+      };
+    }
+
+    // Rate limit
+    if (response.status === 429) {
+      const body = await response.json().catch(() => ({}));
+      throw new RateLimitError(body.error ?? "Rate limit exceeded", "");
+    }
+
+    // Other errors
+    const body = await response.json().catch(() => ({}));
+    throw new ProxyError(body.error ?? `Proxy error: ${response.status}`, response.status);
+  }
+
+  private async retryWithPayment<T>(
+    proxyBody: string,
+    paymentProof: string,
+  ): Promise<GracefulFailResponse<T>> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeout);
+
+    try {
+      const response = await fetch(`${this.baseUrl}/api/x402/proxy`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-PAYMENT": paymentProof,
+        },
+        body: proxyBody,
+        signal: controller.signal,
+      });
+
+      if (response.ok) {
+        const body = await response.json();
+        if (body && typeof body === "object" && "healed" in body && body.healed) {
+          const healed = body as X402HealedResponse;
+          return {
+            statusCode: healed.original_status_code,
+            intercepted: true,
+            autoFixed: false,
+            healed: true,
+            data: body as T,
+            errorAnalysis: healed.error_analysis,
+            rawResponse: healed.raw_destination_response,
+            creditsUsed: healed.meta?.cost_usdc ?? 0,
+            durationMs: healed.meta?.latency_ms ?? 0,
+            settled: healed.settled,
+            txHash: healed.txHash,
+          };
+        }
+        return {
+          statusCode: response.status,
+          intercepted: false,
+          autoFixed: false,
+          healed: false,
+          data: body as T,
+          creditsUsed: 0,
+          durationMs: 0,
+        };
+      }
+
+      const body = await response.json().catch(() => ({}));
+      throw new ProxyError(body.error ?? `Payment retry failed: ${response.status}`, response.status);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  // ── Legacy mode ────────────────────────────────────────────────────────
+
+  private async requestLegacy<T>(
+    method: string,
+    url: string,
+    options: RequestOptions,
   ): Promise<GracefulFailResponse<T>> {
     const proxyHeaders: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey}`,
@@ -110,10 +293,10 @@ export class GracefulFail {
       clearTimeout(timer);
     }
 
-    return this.parseResponse<T>(response);
+    return this.parseLegacyResponse<T>(response);
   }
 
-  private async parseResponse<T>(response: Response): Promise<GracefulFailResponse<T>> {
+  private async parseLegacyResponse<T>(response: Response): Promise<GracefulFailResponse<T>> {
     if (response.status === 401) {
       const body = await response.json().catch(() => ({}));
       throw new AuthenticationError(body.error ?? "Authentication failed");
@@ -131,18 +314,14 @@ export class GracefulFail {
 
     const body = await response.json();
 
-    // Auto-fixed: SelfHeal patched the payload and the retry succeeded
-    if (
-      typeof body === "object" &&
-      body !== null &&
-      "selfheal_auto_fixed" in body &&
-      body.selfheal_auto_fixed === true
-    ) {
+    // Auto-fixed
+    if (typeof body === "object" && body !== null && "selfheal_auto_fixed" in body && body.selfheal_auto_fixed === true) {
       const envelope = body as AutoFixedEnvelope;
       return {
         statusCode: envelope.meta.retry_status_code,
         intercepted: true,
         autoFixed: true,
+        healed: false,
         data: envelope.data as T,
         errorAnalysis: envelope.original_error.error_analysis,
         rawResponse: envelope.original_error.raw_response,
@@ -152,18 +331,14 @@ export class GracefulFail {
       };
     }
 
-    // Intercepted but not auto-fixed (retry failed or not attempted)
-    if (
-      typeof body === "object" &&
-      body !== null &&
-      "graceful_fail_intercepted" in body &&
-      body.graceful_fail_intercepted === true
-    ) {
+    // Intercepted
+    if (typeof body === "object" && body !== null && "graceful_fail_intercepted" in body && body.graceful_fail_intercepted === true) {
       const envelope = body as InterceptedEnvelope;
       return {
         statusCode: envelope.original_status_code,
         intercepted: true,
         autoFixed: false,
+        healed: false,
         data: body as T,
         errorAnalysis: envelope.error_analysis,
         rawResponse: envelope.raw_destination_response,
@@ -177,40 +352,32 @@ export class GracefulFail {
       statusCode: response.status,
       intercepted: false,
       autoFixed: false,
+      healed: false,
       data: body as T,
       creditsUsed: 0,
       durationMs: 0,
     };
   }
 
-  /** Send a GET request through the proxy. */
+  // ── Convenience methods ────────────────────────────────────────────────
+
   async get<T = unknown>(url: string, options?: RequestOptions): Promise<GracefulFailResponse<T>> {
     return this.request<T>("GET", url, options);
   }
 
-  /** Send a POST request through the proxy. */
   async post<T = unknown>(url: string, options?: RequestOptions): Promise<GracefulFailResponse<T>> {
     return this.request<T>("POST", url, options);
   }
 
-  /** Send a PUT request through the proxy. */
   async put<T = unknown>(url: string, options?: RequestOptions): Promise<GracefulFailResponse<T>> {
     return this.request<T>("PUT", url, options);
   }
 
-  /** Send a PATCH request through the proxy. */
-  async patch<T = unknown>(
-    url: string,
-    options?: RequestOptions,
-  ): Promise<GracefulFailResponse<T>> {
+  async patch<T = unknown>(url: string, options?: RequestOptions): Promise<GracefulFailResponse<T>> {
     return this.request<T>("PATCH", url, options);
   }
 
-  /** Send a DELETE request through the proxy. */
-  async delete<T = unknown>(
-    url: string,
-    options?: RequestOptions,
-  ): Promise<GracefulFailResponse<T>> {
+  async delete<T = unknown>(url: string, options?: RequestOptions): Promise<GracefulFailResponse<T>> {
     return this.request<T>("DELETE", url, options);
   }
 }

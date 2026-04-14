@@ -116,12 +116,16 @@ class GracefulFailResponse:
     status_code: int
     intercepted: bool
     auto_fixed: bool = False
+    healed: bool = False
     data: Any = None
     error_analysis: Optional[ErrorAnalysis] = None
     raw_response: Any = None
     applied_diff: Optional[PayloadDiff] = None
     credits_used: int = 0
     duration_ms: int = 0
+    payment_required: Optional[Dict[str, Any]] = None
+    settled: Optional[bool] = None
+    tx_hash: Optional[str] = None
 
     @classmethod
     def from_success(cls, status_code: int, data: Any) -> GracefulFailResponse:
@@ -160,4 +164,29 @@ class GracefulFailResponse:
             raw_response=data.get("raw_destination_response"),
             credits_used=meta.get("credits_used", 1),
             duration_ms=meta.get("duration_ms", 0),
+        )
+
+    @classmethod
+    def from_x402_payment_required(cls, data: Dict[str, Any]) -> GracefulFailResponse:
+        return cls(
+            status_code=402,
+            intercepted=False,
+            data=data,
+            payment_required=data,
+        )
+
+    @classmethod
+    def from_x402_healed(cls, data: Dict[str, Any]) -> GracefulFailResponse:
+        meta = data.get("meta", {})
+        return cls(
+            status_code=data.get("original_status_code", 0),
+            intercepted=True,
+            healed=True,
+            data=data,
+            error_analysis=ErrorAnalysis.from_dict(data.get("error_analysis", {})),
+            raw_response=data.get("raw_destination_response"),
+            credits_used=meta.get("cost_usdc", 0),
+            duration_ms=meta.get("latency_ms", 0),
+            settled=data.get("settled"),
+            tx_hash=data.get("txHash"),
         )

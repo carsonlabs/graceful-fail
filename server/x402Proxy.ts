@@ -2,15 +2,17 @@
  * x402-aware proxy handler for Express.
  *
  * Flow:
- *   Agent → POST /api/proxy → Forward to target
- *     ↓ (target succeeds)
+ *   Agent → POST /api/x402/proxy → Forward to target
+ *     ↓ (target succeeds, no target_schema)
  *     → 200 pass-through (FREE)
- *     ↓ (target fails, no API key, no payment)
+ *     ↓ (target succeeds, target_schema provided, already compliant)
+ *     → 200 pass-through (FREE)
+ *     ↓ (target succeeds, target_schema provided, needs normalization)
+ *     → 402 → pay → LLM normalize → settle on success
+ *     ↓ (target fails, no payment)
  *     → 402 with x402 spec
  *     ↓ (target fails, has x402 payment)
  *     → Verify → LLM heal → Settle on success → Return fix
- *     ↓ (target fails, has legacy API key)
- *     → Existing flow (analyzeError + auto-retry) with deprecation notice
  *
  * Reuses the existing analyzeError + invokeLLM pipeline.
  */
@@ -28,6 +30,13 @@ import {
   loadX402Config,
 } from "./x402";
 import { analyzeError, sanitizeHeaders, type AnalysisInput } from "./llmAnalysis";
+import {
+  normalizeResponse,
+  quickComplianceCheck,
+  classifyNormalizeComplexity,
+  type NormalizeResult,
+} from "./normalizeEngine";
+import { SchemaCache } from "./schemaCache";
 import { ResponseCache } from "./responseCache";
 import { MonitoringRegistry } from "./monitoring";
 
@@ -103,6 +112,7 @@ function isPrivateHost(hostname: string): boolean {
 export interface X402RouterDeps {
   monitor: MonitoringRegistry;
   cache: ResponseCache;
+  schemaCache?: SchemaCache;
   x402Config?: X402Config;
 }
 
@@ -116,10 +126,12 @@ export function createX402Router(deps: X402RouterDeps): {
   const facilitator = new FacilitatorClient(config.facilitatorUrl);
   const rateLimiter = new PaymentAwareRateLimiter();
   const { monitor, cache } = deps;
+  const schemaCache = deps.schemaCache ?? new SchemaCache(500, 60_000);
 
   // Periodic cleanup
   const cleanupTimer = setInterval(() => {
     cache.prune();
+    schemaCache.prune();
     rateLimiter.cleanup();
     const stats = cache.getStats();
     monitor.cacheSize.set(stats.size);
@@ -143,14 +155,15 @@ export function createX402Router(deps: X402RouterDeps): {
       return;
     }
 
-    // Parse body — expects { url, method?, headers?, body?, timeoutMs? }
-    const { url: targetUrl, method: targetMethod, headers: targetHeaders, body: targetBody, timeoutMs } =
+    // Parse body — expects { url, method?, headers?, body?, timeoutMs?, target_schema? }
+    const { url: targetUrl, method: targetMethod, headers: targetHeaders, body: targetBody, timeoutMs, target_schema: targetSchema } =
       req.body as {
         url?: string;
         method?: string;
         headers?: Record<string, string>;
         body?: string;
         timeoutMs?: number;
+        target_schema?: Record<string, unknown>;
       };
 
     if (!targetUrl) {
@@ -209,10 +222,11 @@ export function createX402Router(deps: X402RouterDeps): {
       const latency = Date.now() - start;
       monitor.proxyLatency.observe(latency);
 
-      // SUCCESS — free pass-through
+      // SUCCESS PATH
       if (targetResponse.ok) {
         monitor.proxySuccesses.inc();
         const responseBody = await targetResponse.text();
+        const parsedBody = safeJsonParse(responseBody);
         const result = {
           status: targetResponse.status,
           headers: Object.fromEntries(targetResponse.headers.entries()),
@@ -221,14 +235,127 @@ export function createX402Router(deps: X402RouterDeps): {
             : responseBody,
         };
 
-        if (method === "GET") {
-          cache.set(cacheKey, result);
+        // No target_schema → free pass-through (unchanged behavior)
+        if (!targetSchema || !parsedBody || typeof parsedBody !== "object") {
+          if (method === "GET") cache.set(cacheKey, result);
+          res.setHeader("X-SelfHeal-Status", "pass-through");
+          res.setHeader("X-SelfHeal-Latency", String(latency));
+          res.setHeader("X-SelfHeal-Cost", "0");
+          res.json(result);
+          return;
         }
 
-        res.setHeader("X-SelfHeal-Status", "pass-through");
-        res.setHeader("X-SelfHeal-Latency", String(latency));
-        res.setHeader("X-SelfHeal-Cost", "0");
-        res.json(result);
+        // target_schema provided — check compliance (free, no LLM)
+        const complianceScore = quickComplianceCheck(parsedBody, targetSchema);
+
+        // Already compliant (95+) — free pass-through
+        if (complianceScore >= 95) {
+          res.setHeader("X-SelfHeal-Status", "pass-through");
+          res.setHeader("X-SelfHeal-Latency", String(latency));
+          res.setHeader("X-SelfHeal-Cost", "0");
+          res.json({
+            ...result,
+            was_normalized: false,
+            schema_compliance_score: complianceScore,
+            token_savings_estimate: 0,
+            normalized_data: parsedBody,
+            suggested_fixes: [],
+          });
+          return;
+        }
+
+        // Needs normalization — check for x402 payment
+        const paymentPayload = extractPaymentPayload(req.headers);
+        const schemaProps = targetSchema.properties as Record<string, unknown> | undefined;
+        const complexity = classifyNormalizeComplexity(
+          responseBody.length,
+          schemaProps ? Object.keys(schemaProps).length : 5,
+        );
+        const normTier = pricing.getNormalizeTier(complexity);
+        const normSpec = build402Response(config, pricing, `normalize:${complexity}`, undefined, targetUrl);
+        // Override with normalize pricing
+        if (normSpec.accepts[0]) {
+          normSpec.accepts[0].maxAmountRequired = Math.round(normTier.basePrice * 1_000_000).toString();
+          normSpec.accepts[0].description = `SelfHeal: response normalization to target schema [${complexity}]`;
+        }
+
+        if (!paymentPayload) {
+          if (!config.receivingWallet) {
+            // x402 not configured — normalize for free (generous mode)
+            const normalizeResult = await normalizeResponse({
+              rawResponse: parsedBody,
+              targetSchema,
+              rawResponseSize: responseBody.length,
+            });
+            res.json({ ...result, ...normalizeResult });
+            return;
+          }
+          // Return 402 for normalization payment
+          res.status(402).json(normSpec);
+          return;
+        }
+
+        // PAID NORMALIZATION — verify payment
+        const normRequirements = normSpec.accepts[0];
+        const verification = await facilitator.verify(paymentPayload, normRequirements);
+
+        if (!verification.isValid) {
+          res.status(402).json({
+            error: "Payment verification failed",
+            reason: verification.invalidReason,
+          });
+          return;
+        }
+
+        monitor.x402Payments.inc({ scheme: paymentPayload.scheme ?? "exact" });
+
+        // Check schema cache first
+        const schemaCacheKey = SchemaCache.buildKey(targetSchema, responseBody);
+        const cachedNorm = schemaCache.get<NormalizeResult>(schemaCacheKey);
+
+        let normalizeResult: NormalizeResult;
+        if (cachedNorm) {
+          normalizeResult = cachedNorm;
+        } else {
+          normalizeResult = await normalizeResponse({
+            rawResponse: parsedBody,
+            targetSchema,
+            rawResponseSize: responseBody.length,
+          });
+          if (normalizeResult.wasNormalized) {
+            schemaCache.set(schemaCacheKey, normalizeResult);
+          }
+        }
+
+        // Only settle if normalization actually succeeded
+        if (normalizeResult.wasNormalized) {
+          monitor.healSuccesses.inc();
+          const settleResult = await facilitator.settle(paymentPayload, normRequirements);
+
+          res.setHeader("X-SelfHeal-Status", "normalized");
+          res.setHeader("X-SelfHeal-Cost", `$${normTier.basePrice} USDC`);
+          res.json({
+            ...result,
+            ...normalizeResult,
+            settled: settleResult.success,
+            transaction: settleResult.transaction,
+            meta: {
+              tier: normTier.name,
+              cost_usdc: normTier.basePrice,
+              latency_ms: Date.now() - start,
+            },
+          });
+        } else {
+          // Normalization didn't change anything — don't settle
+          monitor.x402Refunds.inc();
+          res.setHeader("X-SelfHeal-Status", "pass-through");
+          res.setHeader("X-SelfHeal-Cost", "0");
+          res.json({
+            ...result,
+            ...normalizeResult,
+            refunded: true,
+          });
+        }
         return;
       }
 

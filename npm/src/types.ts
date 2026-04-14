@@ -120,6 +120,8 @@ export interface GracefulFailResponse<T = unknown> {
   settled?: boolean;
   /** Transaction hash (x402). */
   txHash?: string;
+  /** Normalization result (when target_schema was provided). */
+  normalization?: NormalizationResult;
 }
 
 /** Options for creating a GracefulFail client. */
@@ -153,4 +155,19 @@ export interface RequestOptions {
   json?: unknown;
   /** Raw string body to send. */
   body?: string;
+  /**
+   * Target JSON schema for response normalization.
+   * When provided, SelfHeal will normalize the API response to match this schema.
+   * Already-compliant responses pass through free. Normalization costs $0.001-$0.004 USDC.
+   */
+  targetSchema?: Record<string, unknown>;
+}
+
+/** Normalization fields returned when target_schema is provided. */
+export interface NormalizationResult {
+  was_normalized: boolean;
+  normalized_data: unknown;
+  schema_compliance_score: number;
+  token_savings_estimate: number;
+  suggested_fixes: string[];
 }

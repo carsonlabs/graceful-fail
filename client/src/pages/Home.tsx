@@ -441,18 +441,17 @@ export default function Home() {
                 </div>
               </div>
               <div className="rounded-xl bg-[#0d1117] border border-[#30363d] p-5 mb-5">
-                <pre className="text-[13px] font-mono text-[#e6edf3] leading-relaxed">{`pip install 'graceful-fail[langchain]'
+                <pre className="text-[13px] font-mono text-[#e6edf3] leading-relaxed">{`import httpx
 
-from graceful_fail import GracefulFail
-
-gf = GracefulFail(api_key="gf_your_key")
-resp = gf.post(url, json=payload)
-
-if resp.intercepted:
-    print(resp.fix_for_agent)`}</pre>
+resp = httpx.post(
+    "https://selfheal.dev/api/x402/proxy",
+    json={"url": target_url, "method": "POST",
+          "body": payload_json},
+)
+# 200? Free. 402? Pay $0.001 USDC, get fix.`}</pre>
               </div>
               <div className="flex flex-wrap gap-2">
-                {["LangChain", "CrewAI", "Async", "Type hints"].map((tag) => (
+                {["x402", "LangChain", "CrewAI", "Async"].map((tag) => (
                   <span key={tag} className="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full px-3 py-1">{tag}</span>
                 ))}
               </div>
@@ -472,18 +471,21 @@ if resp.intercepted:
                 </div>
               </div>
               <div className="rounded-xl bg-[#0d1117] border border-[#30363d] p-5 mb-5">
-                <pre className="text-[13px] font-mono text-[#e6edf3] leading-relaxed">{`npm install graceful-fail
-
-import { GracefulFail } from "graceful-fail";
-
-const gf = new GracefulFail({ apiKey: "gf_..." });
-const resp = await gf.post(url, { json: payload });
-
-if (resp.intercepted)
-  console.log(resp.fixForAgent);`}</pre>
+                <pre className="text-[13px] font-mono text-[#e6edf3] leading-relaxed">{`const resp = await fetch(
+  "https://selfheal.dev/api/x402/proxy",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      url: targetUrl, method: "POST",
+      body: payloadJson,
+    }),
+  }
+);
+// 200? Free. 402? Pay $0.001 USDC, get fix.`}</pre>
               </div>
               <div className="flex flex-wrap gap-2">
-                {["LangChain.js", "TypeScript", "ESM + CJS", "Fetch API"].map((tag) => (
+                {["x402", "LangChain.js", "TypeScript", "Zero deps"].map((tag) => (
                   <span key={tag} className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full px-3 py-1">{tag}</span>
                 ))}
               </div>

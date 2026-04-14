@@ -29,6 +29,7 @@ export interface X402PaymentScheme {
   asset: string;
   extra: {
     name: string;
+    version: string;
     token: string;
   };
 }
@@ -252,7 +253,7 @@ export function build402Response(
       payTo: config.receivingWallet,
       maxTimeoutSeconds: config.deadlineSeconds,
       asset: net.usdcToken,
-      extra: { name: "USDC", token: net.usdcToken },
+      extra: { name: "USDC", version: "2", token: net.usdcToken },
     });
   }
 

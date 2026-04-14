@@ -55,9 +55,9 @@ const FEATURES = [
   },
   {
     icon: Lock,
-    title: "Usage-Based Billing",
+    title: "Outcome-Based Pricing",
     description:
-      "Credits only consumed when the LLM is invoked on a failure. Successful pass-through requests are always free.",
+      "Pay per successful heal via x402 micropayments (USDC). Successes pass through free. Failed analyses are never charged.",
     color: "text-rose-400",
     bg: "bg-rose-500/10",
   },
@@ -65,30 +65,33 @@ const FEATURES = [
 
 const PRICING = [
   {
-    name: "Hobby",
-    price: "Free",
+    name: "Pass-Through",
+    price: "$0",
     period: "",
-    limit: "500 requests/month",
-    features: ["500 proxied requests", "LLM error analysis", "API key management", "Request logs (7 days)", "Community support"],
-    cta: "Start Free",
+    limit: "Target returns 2xx/3xx",
+    features: ["Instant proxy pass-through", "Zero cost, always", "No API key required", "No rate limits on success", "< 200ms overhead"],
+    cta: "Read the Docs",
+    ctaHref: "/docs",
     highlight: false,
   },
   {
-    name: "Pro",
-    price: "$149",
-    period: "/mo",
-    limit: "10,000 requests/month",
-    features: ["10,000 proxied requests", "LLM error analysis", "Multiple API keys", "Request logs (30 days)", "Usage analytics", "Email support"],
-    cta: "Get Pro",
+    name: "Simple Heal",
+    price: "$0.001",
+    period: " USDC",
+    limit: "400, 404, 405, 422 errors",
+    features: ["LLM error diagnosis", "Structured fix instructions", "Auto-retry payload", "Only charged on success", "x402 micropayment (Base)"],
+    cta: "Read the Docs",
+    ctaHref: "/docs",
     highlight: true,
   },
   {
-    name: "Agency",
-    price: "$349",
-    period: "/mo",
-    limit: "50,000 requests/month",
-    features: ["50,000 proxied requests", "$0.003 per extra request", "Unlimited API keys", "Request logs (90 days)", "Full analytics", "Priority support"],
-    cta: "Get Agency",
+    name: "Complex Heal",
+    price: "$0.003",
+    period: "\u2013$0.005",
+    limit: "429, 403, 5xx errors",
+    features: ["Deep error analysis", "Multi-step fix strategies", "Rate limit recovery", "Only charged on success", "x402 micropayment (Base)"],
+    cta: "Read the Docs",
+    ctaHref: "/docs",
     highlight: false,
   },
 ];
@@ -96,18 +99,18 @@ const PRICING = [
 const STEPS = [
   {
     num: "01",
-    title: "Route through SelfHeal",
-    desc: "Replace the destination URL with the SelfHeal proxy endpoint. Set X-Destination-URL to point at the real API.",
+    title: "Send through SelfHeal",
+    desc: "POST your request to /api/x402/proxy with the target URL in the JSON body. No API key needed.",
   },
   {
     num: "02",
-    title: "Success passes through",
-    desc: "2xx and 3xx responses are returned verbatim. Zero overhead, zero credits consumed.",
+    title: "Success passes through free",
+    desc: "2xx and 3xx responses are returned verbatim. Zero cost, zero overhead. You only pay when something breaks.",
   },
   {
     num: "03",
-    title: "Failures get healed",
-    desc: "4xx/5xx errors are intercepted, analyzed by an LLM, auto-retried if possible, and returned with structured fix instructions.",
+    title: "Failures get healed (pay on success)",
+    desc: "Errors trigger a 402. Your agent pays via x402 micropayment, gets LLM-powered fix instructions, and only gets charged if the heal succeeds.",
   },
 ];
 
@@ -127,18 +130,19 @@ const CODE_BEFORE = `const res = await fetch("https://api.crm.com/contacts", {
 // 422 Unprocessable Entity
 // Agent crashes. You get paged.`;
 
-const CODE_AFTER = `const res = await fetch("https://selfheal.dev/api/proxy", {
+const CODE_AFTER = `const res = await fetch("https://selfheal.dev/api/x402/proxy", {
   method: "POST",
-  headers: {
-    "Authorization": "Bearer gf_your_key",
-    "X-Destination-URL": "https://api.crm.com/contacts",
-    "X-Destination-Method": "POST",
-  },
-  body: JSON.stringify({ name: "John Doe" })
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    url: "https://api.crm.com/contacts",
+    method: "POST",
+    body: JSON.stringify({ name: "John Doe" })
+  })
 });
-// SelfHeal auto-fixes { name } → { first_name, last_name }
-// Retries with corrected payload → 201 Created
-// Your agent never even knew it broke.`;
+// 200? Free pass-through.
+// 422? Returns x402 payment spec → agent pays →
+// LLM fixes { name } → { first_name, last_name }
+// Settled only if heal succeeds. $0.001 USDC.`;
 
 // ─── Animated counter ────────────────────────────────────────────────
 
@@ -243,7 +247,7 @@ export default function Home() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-medium mb-10 backdrop-blur-sm">
             <Sparkles className="w-3.5 h-3.5" />
-            Now with auto-retry — errors fix themselves
+            x402 agent-native payments — pay only when heals succeed
             <ChevronRight className="w-3 h-3 opacity-60" />
           </div>
 
@@ -286,7 +290,7 @@ export default function Home() {
           </div>
 
           <p className="text-xs text-muted-foreground/60 mt-5">
-            No credit card required &middot; 500 requests/month free forever &middot; GitHub login
+            No API key required &middot; Success is always free &middot; Pay-per-heal in USDC
           </p>
         </div>
       </section>
@@ -357,7 +361,7 @@ export default function Home() {
               Three lines. That's it.
             </h2>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              Point your requests at SelfHeal, add a header, and go to sleep.
+              POST a JSON body to SelfHeal, get results back. No API key, no setup.
             </p>
           </div>
 
@@ -494,14 +498,14 @@ if (resp.intercepted)
           <div className="text-center mb-20">
             <p className="text-xs text-primary font-semibold uppercase tracking-widest mb-4">Pricing</p>
             <h2 className="text-3xl md:text-5xl font-bold mb-5 tracking-tight">
-              Simple, predictable pricing
+              Outcome-based pricing
             </h2>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              Credits only consumed on failures. Pass-through requests are always free.
+              Agents pay in USDC via x402 only when errors are successfully healed. No subscriptions. No API keys.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
-            {PRICING.map(({ name, price, period, limit, features, cta, highlight }) => (
+            {PRICING.map(({ name, price, period, limit, features, cta, ctaHref, highlight }) => (
               <div
                 key={name}
                 className={`relative rounded-2xl border p-8 flex flex-col transition-all duration-300 ${
@@ -513,7 +517,7 @@ if (resp.intercepted)
                 {highlight && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <div className="text-[10px] font-bold text-primary-foreground bg-primary rounded-full px-4 py-1 shadow-[0_0_16px_oklch(0.75_0.18_145_/_0.4)] uppercase tracking-wider">
-                      Most Popular
+                      Most Common
                     </div>
                   </div>
                 )}
@@ -533,14 +537,15 @@ if (resp.intercepted)
                     </li>
                   ))}
                 </ul>
-                <Button
-                  variant={highlight ? "default" : "outline"}
-                  size="lg"
-                  className={`w-full ${highlight ? "shadow-[0_0_20px_oklch(0.75_0.18_145_/_0.25)]" : ""}`}
-                  onClick={() => (window.location.href = ctaUrl)}
-                >
-                  {cta}
-                </Button>
+                <Link href={ctaHref}>
+                  <Button
+                    variant={highlight ? "default" : "outline"}
+                    size="lg"
+                    className={`w-full ${highlight ? "shadow-[0_0_20px_oklch(0.75_0.18_145_/_0.25)]" : ""}`}
+                  >
+                    {cta}
+                  </Button>
+                </Link>
               </div>
             ))}
           </div>

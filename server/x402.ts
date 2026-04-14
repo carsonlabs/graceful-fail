@@ -23,8 +23,10 @@ export interface X402PaymentScheme {
   resource: string;
   description: string;
   mimeType: string;
+  outputSchema: Record<string, unknown>;
   payTo: string;
-  requiredDeadlineSeconds: number;
+  maxTimeoutSeconds: number;
+  asset: string;
   extra: {
     name: string;
     token: string;
@@ -246,20 +248,10 @@ export function build402Response(
       resource: resource ?? "/api/proxy",
       description: `SelfHeal: error analysis + structured fix + retry payload [${tier.name}]`,
       mimeType: "application/json",
+      outputSchema: {},
       payTo: config.receivingWallet,
-      requiredDeadlineSeconds: config.deadlineSeconds,
-      extra: { name: "USDC", token: net.usdcToken },
-    });
-
-    accepts.push({
-      scheme: "upto",
-      network: net.name,
-      maxAmountRequired: usdcToAtomic(tier.maxPrice),
-      resource: resource ?? "/api/proxy",
-      description: `SelfHeal: error analysis + structured fix + retry payload [${tier.name}, token-based]`,
-      mimeType: "application/json",
-      payTo: config.receivingWallet,
-      requiredDeadlineSeconds: config.deadlineSeconds,
+      maxTimeoutSeconds: config.deadlineSeconds,
+      asset: net.usdcToken,
       extra: { name: "USDC", token: net.usdcToken },
     });
   }

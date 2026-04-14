@@ -72,7 +72,7 @@ You are analyzing a failed Anthropic API request. Key Anthropic error patterns:
 - **400 with 'prompt_too_long'**: Input exceeds model context limit. Claude 3 Opus/Sonnet/Haiku support 200k tokens. Fix: reduce prompt length or split into chunks.
 - **400 with 'invalid_request_error'**: Malformed request. Common issues: missing 'model' field, wrong message format, missing 'max_tokens'.
 - **429 (rate_limit)**: Token or request rate limit exceeded. Fix: implement backoff, reduce concurrency.
-- **model field**: Must be exact strings like "claude-sonnet-4-6-20250514", "claude-opus-4-6-20250605", "claude-haiku-4-5-20251001". Legacy models: "claude-3-5-sonnet-20241022".
+- **model field**: Use aliases like "claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5". Legacy: "claude-sonnet-4-5", "claude-opus-4-5".
 - **messages format**: Anthropic uses 'role' (user/assistant) and 'content'. System prompt goes in a top-level 'system' field, NOT in messages.
 - **max_tokens**: Required field — Anthropic does not have a default. Must be explicitly set.
 - **anthropic-version header**: Required — use "2023-06-01".`;

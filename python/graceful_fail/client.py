@@ -32,6 +32,7 @@ def _build_x402_request(
     data: Any = None,
     base_url: str,
     payment_proof: Optional[str] = None,
+    target_schema: Optional[Dict[str, Any]] = None,
 ) -> dict:
     """Build kwargs for an httpx request to the x402 proxy endpoint."""
     body_str: Optional[str] = None
@@ -40,7 +41,7 @@ def _build_x402_request(
     elif data is not None:
         body_str = data if isinstance(data, str) else str(data)
 
-    proxy_body = {
+    proxy_body: Dict[str, Any] = {
         "url": url,
         "method": method.upper(),
     }
@@ -48,6 +49,8 @@ def _build_x402_request(
         proxy_body["headers"] = headers
     if body_str:
         proxy_body["body"] = body_str
+    if target_schema:
+        proxy_body["target_schema"] = target_schema
 
     req_headers = {"Content-Type": "application/json"}
     if payment_proof:
@@ -201,16 +204,23 @@ class GracefulFail:
         headers: Optional[Dict[str, str]] = None,
         json: Any = None,
         data: Any = None,
+        target_schema: Optional[Dict[str, Any]] = None,
     ) -> GracefulFailResponse:
-        """Send a request through the proxy."""
+        """Send a request through the proxy.
+
+        Args:
+            target_schema: Optional JSON schema for response normalization.
+                When provided, SelfHeal will normalize the API response to match.
+                Already-compliant responses pass through free.
+        """
         if self._is_x402:
-            return self._request_x402(method, url, headers=headers, json_body=json, data=data)
+            return self._request_x402(method, url, headers=headers, json_body=json, data=data, target_schema=target_schema)
         return self._request_legacy(method, url, headers=headers, json_body=json, data=data)
 
     def _request_x402(
         self, method: str, url: str, **kwargs: Any
     ) -> GracefulFailResponse:
-        req_kwargs = _build_x402_request(method, url, base_url=self.base_url, **kwargs)
+        req_kwargs = _build_x402_request(method, url, base_url=self.base_url, target_schema=kwargs.pop("target_schema", None), **kwargs)
         try:
             response = self._client.request(**req_kwargs)
         except httpx.HTTPError as e:
@@ -328,15 +338,16 @@ class GracefulFailAsync:
         headers: Optional[Dict[str, str]] = None,
         json: Any = None,
         data: Any = None,
+        target_schema: Optional[Dict[str, Any]] = None,
     ) -> GracefulFailResponse:
         if self._is_x402:
-            return await self._request_x402(method, url, headers=headers, json_body=json, data=data)
+            return await self._request_x402(method, url, headers=headers, json_body=json, data=data, target_schema=target_schema)
         return await self._request_legacy(method, url, headers=headers, json_body=json, data=data)
 
     async def _request_x402(
         self, method: str, url: str, **kwargs: Any
     ) -> GracefulFailResponse:
-        req_kwargs = _build_x402_request(method, url, base_url=self.base_url, **kwargs)
+        req_kwargs = _build_x402_request(method, url, base_url=self.base_url, target_schema=kwargs.pop("target_schema", None), **kwargs)
         try:
             response = await self._client.request(**req_kwargs)
         except httpx.HTTPError as e:

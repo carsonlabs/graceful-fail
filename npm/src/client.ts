@@ -105,6 +105,7 @@ export class GracefulFail {
       method: method.toUpperCase(),
       headers: options.headers,
       body: bodyStr,
+      ...(options.targetSchema ? { target_schema: options.targetSchema } : {}),
     });
 
     const controller = new AbortController();

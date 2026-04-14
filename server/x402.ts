@@ -88,6 +88,27 @@ const DEFAULT_PRICING: PricingTier[] = [
   },
 ];
 
+const NORMALIZE_PRICING: PricingTier[] = [
+  {
+    name: "normalize-simple",
+    basePrice: 0.001,
+    maxPrice: 0.002,
+    patterns: ["simple"],
+  },
+  {
+    name: "normalize-moderate",
+    basePrice: 0.002,
+    maxPrice: 0.003,
+    patterns: ["moderate"],
+  },
+  {
+    name: "normalize-complex",
+    basePrice: 0.002,
+    maxPrice: 0.004,
+    patterns: ["complex"],
+  },
+];
+
 const USDC_DECIMALS = 6;
 
 function usdcToAtomic(usd: number): string {
@@ -154,9 +175,11 @@ export function loadX402Config(): X402Config {
 
 export class PricingEngine {
   private tiers: PricingTier[];
+  private normalizeTiers: PricingTier[];
 
   constructor(customTiers?: PricingTier[]) {
     this.tiers = customTiers ?? DEFAULT_PRICING;
+    this.normalizeTiers = NORMALIZE_PRICING;
   }
 
   getTier(errorMessage: string, statusCode?: number): PricingTier {
@@ -169,8 +192,15 @@ export class PricingEngine {
     return this.tiers[1] ?? DEFAULT_PRICING[1];
   }
 
+  getNormalizeTier(complexity: "simple" | "moderate" | "complex"): PricingTier {
+    for (const tier of this.normalizeTiers) {
+      if (tier.patterns.includes(complexity)) return tier;
+    }
+    return this.normalizeTiers[0] ?? NORMALIZE_PRICING[0];
+  }
+
   getAllTiers(): PricingTier[] {
-    return this.tiers;
+    return [...this.tiers, ...this.normalizeTiers];
   }
 }
 

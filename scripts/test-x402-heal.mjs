@@ -16,11 +16,13 @@
  *   WALLET_PRIVATE_KEY=0x... node scripts/test-x402-heal.mjs
  */
 
-import { createWalletClient, http } from "viem";
+import { createWalletClient, createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { baseSepolia } from "viem/chains";
+import { publicActions } from "viem";
 import { x402Client, x402HTTPClient } from "@x402/core/client";
-import { ExactEvmScheme, toClientEvmSigner } from "@x402/evm";
+import { toClientEvmSigner } from "@x402/evm";
+import { registerExactEvmScheme } from "@x402/evm/exact/client";
 
 const SELFHEAL_URL = "https://selfheal.dev";
 
@@ -40,18 +42,29 @@ console.log("\n=== SelfHeal x402 End-to-End Test ===\n");
 const account = privateKeyToAccount(privateKey);
 console.log("Wallet:", account.address);
 
-const walletClient = createWalletClient({
-  account,
+const publicClient = createPublicClient({
   chain: baseSepolia,
   transport: http(),
 });
 
-const signer = toClientEvmSigner(walletClient);
-const exactScheme = new ExactEvmScheme(signer);
+const walletClient = createWalletClient({
+  account,
+  chain: baseSepolia,
+  transport: http(),
+}).extend(publicActions);
+
+// Build signer manually — toClientEvmSigner doesn't extract address from walletClient properly
+const signer = toClientEvmSigner(
+  {
+    address: account.address,
+    signTypedData: (msg) => walletClient.signTypedData(msg),
+  },
+  publicClient,
+);
 
 const client = new x402Client();
-client.register("eip155:84532", exactScheme); // Base Sepolia
-client.registerV1("eip155:84532", exactScheme); // v1 compat
+// Registers for all EVM networks (v1 human names + v2 eip155: format)
+registerExactEvmScheme(client, { signer });
 
 const httpClient = new x402HTTPClient(client);
 

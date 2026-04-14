@@ -100,18 +100,14 @@ interface NetworkConfig {
 
 const SUPPORTED_NETWORKS: NetworkConfig[] = [
   {
-    name: "eip155:8453",
+    name: "base",
     chainId: 8453,
     usdcToken: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
   },
   {
-    name: "eip155:84532",
+    name: "base-sepolia",
     chainId: 84532,
     usdcToken: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-  },
-  {
-    name: "solana:mainnet",
-    usdcToken: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
   },
 ];
 
@@ -141,7 +137,7 @@ export function loadX402Config(): X402Config {
     facilitatorUrl:
       process.env.X402_FACILITATOR_URL ?? "https://x402.org/facilitator",
     receivingWallet: process.env.X402_RECEIVING_WALLET ?? "",
-    networks: (process.env.X402_NETWORKS ?? "eip155:84532")
+    networks: (process.env.X402_NETWORKS ?? "base-sepolia")
       .split(",")
       .map((n) => n.trim()),
     pricingTiers: customPricing,

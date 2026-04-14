@@ -25,9 +25,27 @@ const TYPE_CONFIG: Record<ChangeType, { label: string; color: string; icon: Reac
 
 const RELEASES: Release[] = [
   {
+    version: "3.0.0",
+    date: "April 14, 2026",
+    tag: "latest",
+    summary: "x402 outcome-based pricing, response normalization, and published SDKs — SelfHeal is now fully agent-native with USDC micropayments.",
+    changes: [
+      { type: "feature", text: "x402 outcome-based pricing — agents pay $0.001-$0.005 USDC per successful heal via x402 micropayments on Base. No API keys, no subscriptions, no accounts." },
+      { type: "feature", text: "Six new endpoints: POST /api/x402/proxy, POST /api/x402/heal, GET /api/x402/pricing, GET /api/x402/usage, GET /metrics (Prometheus), GET /health" },
+      { type: "feature", text: "Response normalization — send optional target_schema in the request body. SelfHeal normalizes the API response to match your schema. Already-compliant responses are free." },
+      { type: "feature", text: "Prometheus metrics — counters, histograms, and gauges for proxy requests, heals, x402 payments, LLM token usage, latency, and cache performance" },
+      { type: "feature", text: "Webhook alerting — automatic alerts on traffic spikes (>5x baseline), daily LLM cost overruns, and low heal success rates" },
+      { type: "feature", text: "Response caching — TTL-based cache for successful GET proxy responses, reducing origin load on repeated requests" },
+      { type: "feature", text: "Claude native LLM provider — hosted mode with prompt caching when ANTHROPIC_API_KEY is set, cutting LLM costs ~90% on repeated provider patterns" },
+      { type: "feature", text: "Published SDKs v0.4.0 on npm and PyPI with native x402 support, LangChain and CrewAI integrations" },
+      { type: "improvement", text: "Landing page, docs, and README fully rewritten for x402 outcome-based model" },
+      { type: "improvement", text: "OpenAPI 3.1 spec updated with all x402 endpoints, request/response schemas, and payment spec types" },
+      { type: "security", text: "x402 payment verification via facilitator — payments only settle on successful heal. Failed analyses are never charged." },
+    ],
+  },
+  {
     version: "2.0.0",
     date: "March 29, 2026",
-    tag: "latest",
     summary: "Auto-retry with fixed payload and Sentry integration — SelfHeal now fixes and retries failed requests automatically.",
     changes: [
       { type: "feature", text: "Auto-retry with fixed payload — when the LLM diagnoses a fixable error, SelfHeal applies the suggested diff and retries the request automatically. Successful retries return the API response directly with a selfheal_auto_fixed flag." },

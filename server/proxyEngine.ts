@@ -5,6 +5,8 @@ import { analyzeError, detectProvider, type ErrorAnalysis } from "./llmAnalysis"
 import { dispatchWebhook } from "./webhookEngine";
 import { sendSlackAlert } from "./slackAlert";
 import { getSlackIntegration } from "./db";
+import { checkThreats, isThreatShieldEnabled } from "./threatShield";
+import { safeFetch, SsrfError, validateFetchUrlWithDns } from "./lib/url-safety";
 
 // ── Auto-Retry Helpers ────────────────────────────────────────────────────────
 
@@ -149,38 +151,71 @@ export async function proxyHandler(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  let parsedUrl: URL;
-  try {
-    parsedUrl = new URL(destinationUrl);
-  } catch {
-    res.status(400).json({ error: `Invalid X-Destination-URL: "${destinationUrl}" is not a valid URL.` });
+  // Validate destination: scheme + DNS resolution + reserved ranges. The
+  // subsequent fetches use safeFetch which re-validates every redirect hop.
+  const validated = await validateFetchUrlWithDns(destinationUrl);
+  if (!validated) {
+    res.status(400).json({
+      error: `Rejected: "${destinationUrl}" is invalid, non-http(s), or resolves to a private/reserved network.`,
+    });
     return;
   }
+  const parsedUrl = validated;
 
-  // Block SSRF to internal/loopback/private addresses
-  const hostname = parsedUrl.hostname;
-  const isPrivate =
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname === "0.0.0.0" ||
-    hostname === "[::1]" ||
-    hostname.startsWith("192.168.") ||
-    hostname.startsWith("10.") ||
-    hostname.startsWith("172.16.") || hostname.startsWith("172.17.") ||
-    hostname.startsWith("172.18.") || hostname.startsWith("172.19.") ||
-    hostname.startsWith("172.20.") || hostname.startsWith("172.21.") ||
-    hostname.startsWith("172.22.") || hostname.startsWith("172.23.") ||
-    hostname.startsWith("172.24.") || hostname.startsWith("172.25.") ||
-    hostname.startsWith("172.26.") || hostname.startsWith("172.27.") ||
-    hostname.startsWith("172.28.") || hostname.startsWith("172.29.") ||
-    hostname.startsWith("172.30.") || hostname.startsWith("172.31.") ||
-    hostname.startsWith("169.254.") ||
-    hostname.startsWith("fe80:") ||
-    hostname.endsWith(".local") ||
-    hostname.endsWith(".internal");
-  if (isPrivate) {
-    res.status(400).json({ error: "Requests to internal/loopback addresses are not allowed." });
-    return;
+  // ── 4b. ThreatShield — check origin IP + destination URL ────────────────
+  if (isThreatShieldEnabled()) {
+    const clientIp =
+      (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+      req.socket.remoteAddress ||
+      undefined;
+
+    const threatResult = await checkThreats(clientIp, destinationUrl);
+
+    if (!threatResult.allowed) {
+      // Log the blocked request
+      await insertRequestLog({
+        apiKeyId: apiKey.id,
+        userId: apiKey.userId,
+        destinationUrl,
+        method: destinationMethod,
+        statusCode: 403,
+        wasIntercepted: true,
+        creditsUsed: 0,
+        durationMs: Date.now() - start,
+        errorSummary: `ThreatShield blocked: ${threatResult.threats.map((t) => t.reason).join("; ")}`,
+      });
+
+      // Fire webhook for blocked threats
+      dispatchWebhook(apiKey.userId, "threat_blocked", {
+        api_key_id: apiKey.id,
+        api_key_name: apiKey.name,
+        destination_url: destinationUrl,
+        client_ip: clientIp,
+        threats: threatResult.threats,
+      }).catch(() => {});
+
+      res.status(403).json({
+        error: "Request blocked by ThreatShield",
+        threats: threatResult.threats.map((t) => ({
+          source: t.source,
+          severity: t.severity,
+          reason: t.reason,
+        })),
+        meta: {
+          checked_at: threatResult.checked_at,
+          duration_ms: threatResult.duration_ms,
+        },
+      });
+      return;
+    }
+
+    // If medium-severity threats detected, flag in response headers
+    if (threatResult.threats.length > 0) {
+      res.setHeader(
+        "x-selfheal-threat-flags",
+        threatResult.threats.map((t) => `${t.source}:${t.severity}`).join(",")
+      );
+    }
   }
 
   // ── 5. Build forwarded headers ───────────────────────────────────────────
@@ -220,10 +255,13 @@ export async function proxyHandler(req: Request, res: Response): Promise<void> {
       forwardHeaders["content-length"] = String(Buffer.byteLength(bodyStr!));
     }
 
-    const destResponse = await fetch(destinationUrl, {
+    // skipDns: destinationUrl was validated above; safeFetch still blocks
+    // any redirect hop that points at a private IP.
+    const destResponse = await safeFetch(destinationUrl, {
       method: destinationMethod,
       headers: forwardHeaders,
       body: bodyStr,
+      skipDns: true,
     });
 
     destStatusCode = destResponse.status;
@@ -292,10 +330,11 @@ export async function proxyHandler(req: Request, res: Response): Promise<void> {
         retryHeaders["content-length"] = String(Buffer.byteLength(patchedBodyStr));
         retryHeaders["x-selfheal-retry"] = "1";
 
-        const retryResponse = await fetch(destinationUrl, {
+        const retryResponse = await safeFetch(destinationUrl, {
           method: destinationMethod,
           headers: retryHeaders,
           body: patchedBodyStr,
+          skipDns: true,
         });
 
         retryStatusCode = retryResponse.status;

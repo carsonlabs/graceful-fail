@@ -10,6 +10,10 @@ export const ENV = {
   appUrl: process.env.APP_URL ?? "http://localhost:3000",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  // ThreatShield — free threat intelligence APIs (all optional)
+  abuseipdbApiKey: process.env.ABUSEIPDB_API_KEY ?? "",
+  googleSafeBrowsingKey: process.env.GOOGLE_SAFEBROWSING_API_KEY ?? "",
+  ipgeolocationApiKey: process.env.IPGEOLOCATION_API_KEY ?? "",
   // x402 Payment Protocol
   x402ReceivingWallet: process.env.X402_RECEIVING_WALLET ?? "",
   x402FacilitatorUrl: process.env.X402_FACILITATOR_URL ?? "https://x402.org/facilitator",

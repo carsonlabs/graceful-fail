@@ -39,6 +39,7 @@ import {
 import { SchemaCache } from "./schemaCache";
 import { ResponseCache } from "./responseCache";
 import { MonitoringRegistry } from "./monitoring";
+import { safeFetch, SsrfError, validateFetchUrlWithDns } from "./lib/url-safety";
 
 // --- Rate Limiter ---
 
@@ -91,21 +92,9 @@ function getClientIp(req: Request): string {
     ?? "unknown";
 }
 
-function isPrivateHost(hostname: string): boolean {
-  return (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname === "0.0.0.0" ||
-    hostname === "[::1]" ||
-    hostname.startsWith("192.168.") ||
-    hostname.startsWith("10.") ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) ||
-    hostname.startsWith("169.254.") ||
-    hostname.startsWith("fe80:") ||
-    hostname.endsWith(".local") ||
-    hostname.endsWith(".internal")
-  );
-}
+// SSRF checks now live in ./lib/url-safety (validateFetchUrlWithDns + safeFetch).
+// The old synchronous isPrivateHost missed DNS rebinding, IPv4-mapped IPv6,
+// multicast, 100.64/10 CGN, and non-http schemes.
 
 // --- x402 Router Factory ---
 
@@ -171,15 +160,13 @@ export function createX402Router(deps: X402RouterDeps): {
       return;
     }
 
-    // SSRF check
-    try {
-      const parsed = new URL(targetUrl);
-      if (isPrivateHost(parsed.hostname)) {
-        res.status(400).json({ error: "Requests to internal/loopback addresses are not allowed." });
-        return;
-      }
-    } catch {
-      res.status(400).json({ error: `Invalid url: "${targetUrl}" is not a valid URL.` });
+    // SSRF check: scheme + DNS resolution. The subsequent safeFetch also
+    // re-validates every redirect hop.
+    const validated = await validateFetchUrlWithDns(targetUrl);
+    if (!validated) {
+      res.status(400).json({
+        error: `Rejected: "${targetUrl}" is invalid, non-http(s), or resolves to a private/reserved network.`,
+      });
       return;
     }
 
@@ -202,21 +189,25 @@ export function createX402Router(deps: X402RouterDeps): {
         return;
       }
 
-      // Forward to target
+      // Forward to target. safeFetch re-validates each redirect hop (SSRF via
+      // public → private redirect is blocked).
       const timeout = timeoutMs ?? 30_000;
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeout);
 
       let targetResponse: globalThis.Response;
       try {
-        targetResponse = await fetch(targetUrl, {
+        targetResponse = await safeFetch(targetUrl, {
           method,
           headers: targetHeaders ?? {},
           body: targetBody ?? undefined,
-          signal: controller.signal,
+          timeoutMs: timeout,
+          skipDns: true, // already validated above; saves a resolver round-trip
         });
-      } finally {
-        clearTimeout(timer);
+      } catch (err) {
+        if (err instanceof SsrfError) {
+          res.status(400).json({ error: `Rejected: ${err.reason}` });
+          return;
+        }
+        throw err;
       }
 
       const latency = Date.now() - start;

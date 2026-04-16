@@ -4,7 +4,7 @@ import { getDb } from "./db";
 import { webhookEndpoints, webhookDeliveries } from "../drizzle/schema";
 import { notifyOwner } from "./_core/notification";
 
-export type WebhookEvent = "rate_limit" | "non_retriable_error" | "all";
+export type WebhookEvent = "rate_limit" | "non_retriable_error" | "threat_blocked" | "all";
 
 export interface WebhookPayload {
   event: WebhookEvent;

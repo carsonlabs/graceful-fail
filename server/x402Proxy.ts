@@ -40,56 +40,35 @@ import { SchemaCache } from "./schemaCache";
 import { ResponseCache } from "./responseCache";
 import { MonitoringRegistry } from "./monitoring";
 import { safeFetch, SsrfError, validateFetchUrlWithDns } from "./lib/url-safety";
+import { rateLimit } from "./lib/rate-limit";
 
-// --- Rate Limiter ---
+// --- Rate limit config ---
 
-interface RateLimitEntry {
-  count: number;
-  windowStart: number;
-}
+const RATE_WINDOW_MS = 60_000;
+const FREE_LIMIT = 30;
+const PAID_LIMIT = 300;
 
-class PaymentAwareRateLimiter {
-  private limits = new Map<string, RateLimitEntry>();
-  private windowMs: number;
-  private freeLimit: number;
-  private paidLimit: number;
-
-  constructor(windowMs = 60_000, freeLimit = 30, paidLimit = 300) {
-    this.windowMs = windowMs;
-    this.freeLimit = freeLimit;
-    this.paidLimit = paidLimit;
-  }
-
-  check(ip: string, hasPaid: boolean): { allowed: boolean; remaining: number } {
-    const now = Date.now();
-    const limit = hasPaid ? this.paidLimit : this.freeLimit;
-    let entry = this.limits.get(ip);
-
-    if (!entry || now - entry.windowStart > this.windowMs) {
-      entry = { count: 0, windowStart: now };
-      this.limits.set(ip, entry);
-    }
-
-    entry.count++;
-    return { allowed: entry.count <= limit, remaining: Math.max(0, limit - entry.count) };
-  }
-
-  cleanup(): void {
-    const now = Date.now();
-    for (const [ip, entry] of this.limits) {
-      if (now - entry.windowStart > this.windowMs * 2) {
-        this.limits.delete(ip);
-      }
-    }
-  }
+/**
+ * Cheap structural validation of a client-supplied X-PAYMENT payload.
+ * This catches random base64 blobs (the previous bypass vector) without paying
+ * the cost of a facilitator round-trip — full on-chain verification still
+ * happens in the main flow before any paid action settles.
+ */
+function isStructurallyValidPayment(p: X402PaymentPayload | null): boolean {
+  if (!p || typeof p !== "object") return false;
+  if (typeof p.x402Version !== "number" || !Number.isFinite(p.x402Version)) return false;
+  if (typeof p.scheme !== "string" || p.scheme.length === 0) return false;
+  if (typeof p.network !== "string" || p.network.length === 0) return false;
+  if (typeof p.payload !== "object" || p.payload === null) return false;
+  return true;
 }
 
 // --- Helpers ---
 
 function getClientIp(req: Request): string {
-  return req.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim()
-    ?? req.ip
-    ?? "unknown";
+  // `app.set("trust proxy", 1)` in _core/index.ts makes req.ip the trusted
+  // left-most hop. Fall back to unknown bucket only when we can't identify.
+  return req.ip ?? "unknown";
 }
 
 // SSRF checks now live in ./lib/url-safety (validateFetchUrlWithDns + safeFetch).
@@ -113,15 +92,13 @@ export function createX402Router(deps: X402RouterDeps): {
   const config = deps.x402Config ?? loadX402Config();
   const pricing = new PricingEngine(config.pricingTiers);
   const facilitator = new FacilitatorClient(config.facilitatorUrl);
-  const rateLimiter = new PaymentAwareRateLimiter();
   const { monitor, cache } = deps;
   const schemaCache = deps.schemaCache ?? new SchemaCache(500, 60_000);
 
-  // Periodic cleanup
+  // Periodic cleanup (rate-limit bucket cleanup now handled inside ./lib/rate-limit)
   const cleanupTimer = setInterval(() => {
     cache.prune();
     schemaCache.prune();
-    rateLimiter.cleanup();
     const stats = cache.getStats();
     monitor.cacheSize.set(stats.size);
     monitor.cacheHitRate.set(stats.hitRate);
@@ -130,16 +107,29 @@ export function createX402Router(deps: X402RouterDeps): {
   // ── POST /api/x402/proxy — x402-protected proxy ─────────────────────────
   router.post("/api/x402/proxy", async (req: Request, res: Response) => {
     const clientIp = getClientIp(req);
-    const hasPayment = !!extractPaymentPayload(req.headers);
-    const rateCheck = rateLimiter.check(clientIp, hasPayment);
 
-    if (!rateCheck.allowed) {
+    // Two-tier rate limit. The previous implementation elevated to the paid
+    // ceiling on mere presence of X-PAYMENT — any random base64 blob would do.
+    // Now: every request always counts against the per-IP free counter; only
+    // once it's exhausted do we consult a separate paid counter, and only if
+    // the caller's X-PAYMENT payload is at least structurally valid.
+    // Full on-chain verification still happens downstream before settlement.
+    const freeCheck = await rateLimit(`x402:free:${clientIp}`, FREE_LIMIT, RATE_WINDOW_MS);
+    let allowed = freeCheck.allowed;
+    const paymentPayload = extractPaymentPayload(req.headers);
+
+    if (!allowed && isStructurallyValidPayment(paymentPayload)) {
+      const paidCheck = await rateLimit(`x402:paid:${clientIp}`, PAID_LIMIT, RATE_WINDOW_MS);
+      allowed = paidCheck.allowed;
+    }
+
+    if (!allowed) {
       res.status(429).json({
         error: "Rate limit exceeded",
-        retryAfterSeconds: 60,
-        hint: hasPayment
+        retryAfterSeconds: Math.ceil((freeCheck.resetAt - Date.now()) / 1000),
+        hint: paymentPayload
           ? "Paid rate limit reached. Try again in 60 seconds."
-          : "Free tier rate limit. Include x402 payment proof for higher limits.",
+          : "Free tier rate limit. Include a valid x402 payment payload for higher limits.",
       });
       return;
     }
@@ -228,7 +218,15 @@ export function createX402Router(deps: X402RouterDeps): {
 
         // No target_schema → free pass-through (unchanged behavior)
         if (!targetSchema || !parsedBody || typeof parsedBody !== "object") {
-          if (method === "GET") cache.set(cacheKey, result);
+          // SECURITY C5: never cache responses for auth-bearing requests.
+          // The cache is shared across clients — Alice's authenticated
+          // response must not be served to Bob from cache.
+          const hasAuth =
+            !!targetHeaders &&
+            Object.keys(targetHeaders).some((k) =>
+              /^(authorization|cookie|x-api-key|x-auth-token|x-access-token)$/i.test(k),
+            );
+          if (method === "GET" && !hasAuth) cache.set(cacheKey, result);
           res.setHeader("X-SelfHeal-Status", "pass-through");
           res.setHeader("X-SelfHeal-Latency", String(latency));
           res.setHeader("X-SelfHeal-Cost", "0");
@@ -272,13 +270,12 @@ export function createX402Router(deps: X402RouterDeps): {
 
         if (!paymentPayload) {
           if (!config.receivingWallet) {
-            // x402 not configured — normalize for free (generous mode)
-            const normalizeResult = await normalizeResponse({
-              rawResponse: parsedBody,
-              targetSchema,
-              rawResponseSize: responseBody.length,
+            // SECURITY C3: no more "generous mode" — free LLM is a key-drainer.
+            // Return 503 to match the /heal handler's behavior.
+            res.status(503).json({
+              error: "x402 not configured on this server",
+              hint: "Normalization requires an x402 payment. This deployment has X402_RECEIVING_WALLET unset.",
             });
-            res.json({ ...result, ...normalizeResult });
             return;
           }
           // Return 402 for normalization payment
@@ -408,21 +405,32 @@ export function createX402Router(deps: X402RouterDeps): {
         const healLatency = Date.now() - healStart;
         monitor.healLatency.observe(healLatency);
 
-        // Settle payment only on successful analysis
-        monitor.healSuccesses.inc();
+        // SECURITY C1: settle BEFORE delivering the heal. If settlement fails
+        // (on-chain revert, facilitator 5xx, insufficient USDC at settle time),
+        // do NOT return the error_analysis — that's a free heal.
         const settleResult = await facilitator.settle(paymentPayload, paymentRequirements);
 
-        if (settleResult.success) {
-          const expectedAmount = Math.round(tier.basePrice * 1_000_000).toString();
-          monitor.x402Revenue.inc({ tier: tier.name }, parseInt(expectedAmount));
+        if (!settleResult.success) {
+          monitor.x402Refunds.inc();
+          monitor.healFailures.inc();
+          res.status(402).json({
+            error: "Payment settlement failed",
+            reason: settleResult.errorMessage ?? "Unknown settle error",
+            hint: "Signature verified but on-chain settlement did not succeed. Not charged. Retry with a fresh payment.",
+          });
+          return;
         }
+
+        monitor.healSuccesses.inc();
+        const expectedAmount = Math.round(tier.basePrice * 1_000_000).toString();
+        monitor.x402Revenue.inc({ tier: tier.name }, parseInt(expectedAmount));
 
         res.setHeader("X-SelfHeal-Status", "healed");
         res.setHeader("X-SelfHeal-Cost", `$${tier.basePrice} USDC`);
         res.setHeader("X-SelfHeal-Latency", String(healLatency));
         res.json({
           healed: true,
-          settled: settleResult.success,
+          settled: true,
           transaction: settleResult.transaction,
           original_status_code: targetResponse.status,
           error_analysis: analysis,
@@ -452,7 +460,25 @@ export function createX402Router(deps: X402RouterDeps): {
 
   // ── POST /api/x402/heal — direct heal endpoint ──────────────────────────
   router.post("/api/x402/heal", async (req: Request, res: Response) => {
+    const clientIp = getClientIp(req);
     const paymentPayload = extractPaymentPayload(req.headers);
+
+    // Same two-tier gating as /proxy. Without this, an attacker could hammer
+    // /heal with malformed payloads (each one costs us a facilitator round-trip
+    // to reject) for free.
+    const freeCheck = await rateLimit(`x402:free:${clientIp}`, FREE_LIMIT, RATE_WINDOW_MS);
+    let allowed = freeCheck.allowed;
+    if (!allowed && isStructurallyValidPayment(paymentPayload)) {
+      const paidCheck = await rateLimit(`x402:paid:${clientIp}`, PAID_LIMIT, RATE_WINDOW_MS);
+      allowed = paidCheck.allowed;
+    }
+    if (!allowed) {
+      res.status(429).json({
+        error: "Rate limit exceeded",
+        retryAfterSeconds: Math.ceil((freeCheck.resetAt - Date.now()) / 1000),
+      });
+      return;
+    }
 
     if (!paymentPayload) {
       const { errorBody, statusCode } = req.body as { errorBody?: string; statusCode?: number };
@@ -516,12 +542,28 @@ export function createX402Router(deps: X402RouterDeps): {
         responseBody: safeJsonParse(errorBody) ?? errorBody,
       });
 
-      monitor.healSuccesses.inc();
+      // SECURITY C1: settle BEFORE delivering the heal. Do NOT return
+      // error_analysis when on-chain settlement failed.
       const settleResult = await facilitator.settle(paymentPayload, paymentRequirements);
+
+      if (!settleResult.success) {
+        monitor.x402Refunds.inc();
+        monitor.healFailures.inc();
+        res.status(402).json({
+          error: "Payment settlement failed",
+          reason: settleResult.errorMessage ?? "Unknown settle error",
+          hint: "Signature verified but on-chain settlement did not succeed. Not charged. Retry with a fresh payment.",
+        });
+        return;
+      }
+
+      monitor.healSuccesses.inc();
+      const expectedAmount = Math.round(tier.basePrice * 1_000_000).toString();
+      monitor.x402Revenue.inc({ tier: tier.name }, parseInt(expectedAmount));
 
       res.json({
         healed: true,
-        settled: settleResult.success,
+        settled: true,
         transaction: settleResult.transaction,
         error_analysis: analysis,
       });

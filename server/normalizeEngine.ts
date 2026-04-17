@@ -9,6 +9,7 @@
  */
 
 import { invokeLLM } from "./_core/llm";
+import { wrapUntrusted, UNTRUSTED_INSTRUCTION } from "./lib/prompt-delimit";
 
 // --- Types ---
 
@@ -136,11 +137,24 @@ export async function normalizeResponse(input: NormalizeInput): Promise<Normaliz
   }
 
   // Call LLM to normalize
+  // SECURITY H5: both raw response + schema are attacker-controlled.
+  // Wrap in <untrusted_data> delimiters + prepend UNTRUSTED_INSTRUCTION
+  // to block prompt-injection via crafted response bodies or schemas.
+  const rawBlob = wrapUntrusted(
+    JSON.stringify(rawResponse, null, 2).slice(0, 8000),
+    { tag: "raw_api_response", maxLength: 8000 },
+  );
+  const schemaBlob = wrapUntrusted(
+    JSON.stringify(targetSchema, null, 2).slice(0, 4000),
+    { tag: "target_schema", maxLength: 4000 },
+  );
   const userMessage = `## Raw API Response
-${JSON.stringify(rawResponse, null, 2).slice(0, 8000)}
+${rawBlob}
 
 ## Target Schema
-${JSON.stringify(targetSchema, null, 2).slice(0, 4000)}
+${schemaBlob}
+
+${UNTRUSTED_INSTRUCTION}
 
 Transform the raw response to match the target schema exactly. Return ONLY the normalized JSON.`;
 

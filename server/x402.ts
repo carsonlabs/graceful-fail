@@ -183,7 +183,23 @@ export class PricingEngine {
   }
 
   getTier(errorMessage: string, statusCode?: number): PricingTier {
-    const searchStr = `${statusCode ?? ""} ${errorMessage}`.toLowerCase();
+    // SECURITY H4: authoritative by status code, not by attacker-controlled
+    // response body. Without this, an attacker can embed "404" in a 429
+    // response body and get charged the cheaper simple-tier price.
+    if (typeof statusCode === "number" && statusCode > 0) {
+      const simple = this.tiers.find((t) => t.name === "simple");
+      const moderate = this.tiers.find((t) => t.name === "moderate");
+      const complex = this.tiers.find((t) => t.name === "complex");
+      // 401/403/429 = complex (auth / rate-limit — typically hardest heals)
+      if ([401, 403, 429].includes(statusCode) && complex) return complex;
+      // 5xx = moderate (server errors, often retriable)
+      if (statusCode >= 500 && moderate) return moderate;
+      // 4xx (other) = simple (bad payload, typos)
+      if (statusCode >= 400 && simple) return simple;
+    }
+    // No status code = network-level error (ECONNREFUSED, DNS fail).
+    // Fall back to body pattern matching.
+    const searchStr = errorMessage.toLowerCase();
     for (const tier of this.tiers) {
       if (tier.patterns.some((p) => searchStr.includes(p.toLowerCase()))) {
         return tier;
@@ -213,6 +229,10 @@ export class FacilitatorClient {
     paymentPayload: X402PaymentPayload,
     paymentRequirements: X402PaymentScheme,
   ): Promise<X402VerifyResult> {
+    // SECURITY H2: bound facilitator verify at 5s. Without this, a hanging
+    // facilitator piles up active requests and DoS's the dyno.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5_000);
     try {
       const resp = await fetch(`${this.facilitatorUrl}/verify`, {
         method: "POST",
@@ -222,6 +242,7 @@ export class FacilitatorClient {
           paymentPayload,
           paymentRequirements,
         }),
+        signal: controller.signal,
       });
       if (!resp.ok) {
         const text = await resp.text().catch(() => "");
@@ -229,10 +250,15 @@ export class FacilitatorClient {
       }
       return (await resp.json()) as X402VerifyResult;
     } catch (err) {
+      const isTimeout = err instanceof Error && err.name === "AbortError";
       return {
         isValid: false,
-        invalidReason: `Facilitator unreachable: ${err instanceof Error ? err.message : String(err)}`,
+        invalidReason: isTimeout
+          ? "Facilitator verify timeout (>5s)"
+          : `Facilitator unreachable: ${err instanceof Error ? err.message : String(err)}`,
       };
+    } finally {
+      clearTimeout(timer);
     }
   }
 
@@ -240,6 +266,10 @@ export class FacilitatorClient {
     paymentPayload: X402PaymentPayload,
     paymentRequirements: X402PaymentScheme,
   ): Promise<X402SettleResult> {
+    // SECURITY H2: bound facilitator settle at 10s (settle can be slower
+    // than verify because it's an on-chain transaction).
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
     try {
       const resp = await fetch(`${this.facilitatorUrl}/settle`, {
         method: "POST",
@@ -249,6 +279,7 @@ export class FacilitatorClient {
           paymentPayload,
           paymentRequirements,
         }),
+        signal: controller.signal,
       });
       if (!resp.ok) {
         const text = await resp.text().catch(() => "");
@@ -256,10 +287,15 @@ export class FacilitatorClient {
       }
       return (await resp.json()) as X402SettleResult;
     } catch (err) {
+      const isTimeout = err instanceof Error && err.name === "AbortError";
       return {
         success: false,
-        errorMessage: `Facilitator unreachable: ${err instanceof Error ? err.message : String(err)}`,
+        errorMessage: isTimeout
+          ? "Facilitator settle timeout (>10s)"
+          : `Facilitator unreachable: ${err instanceof Error ? err.message : String(err)}`,
       };
+    } finally {
+      clearTimeout(timer);
     }
   }
 }

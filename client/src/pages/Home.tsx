@@ -15,11 +15,11 @@ import { useState, useEffect } from "react";
 const FEATURES = [
   {
     icon: Zap,
-    title: "Instant Error Intelligence",
+    title: "MCP Reliability Layer",
     description:
-      "When your agent hits a 4xx or 5xx, our LLM analyzes the exact payload and returns a precise, actionable fix — not a generic error message.",
-    color: "text-amber-400",
-    bg: "bg-amber-500/10",
+      "Only 72% of MCP calls succeed on first try in production. SelfHeal wraps any MCP server or API with retry, circuit-break, and fallback — then heals timeouts, tool failures, and auth errors with LLM-generated fixes at runtime.",
+    color: "text-violet-400",
+    bg: "bg-violet-500/10",
   },
   {
     icon: Shield,
@@ -247,7 +247,7 @@ export default function Home() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-medium mb-10 backdrop-blur-sm">
             <Sparkles className="w-3.5 h-3.5" />
-            x402 agent-native payments — pay only when heals succeed
+            Solves the 72% MCP reliability problem — retry, heal, verify
             <ChevronRight className="w-3 h-3 opacity-60" />
           </div>
 
@@ -258,8 +258,9 @@ export default function Home() {
           </h1>
 
           <p className="text-lg md:text-xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed">
-            An API proxy that intercepts failed calls, analyzes errors with an LLM,
-            and auto-retries with corrected payloads — so your AI agents recover autonomously.
+            The self-healing proxy for AI agents and MCP servers. Auto-retries on timeout,
+            circuit-breaks cascading failures, heals 4xx/5xx with LLM-generated fixes —
+            so your agents recover before you get paged.
           </p>
 
           {/* Install badges */}

@@ -1,4 +1,5 @@
 import { invokeLLM, type LLMOverrides } from "./_core/llm";
+import { wrapUntrusted, UNTRUSTED_INSTRUCTION } from "./lib/prompt-delimit";
 
 /** Headers that must be stripped before sending to the LLM to prevent credential leakage */
 const SENSITIVE_HEADERS = new Set([
@@ -166,9 +167,19 @@ export async function analyzeError(input: AnalysisInput, llmOverrides?: LLMOverr
   const provider = detectProvider(input.destinationUrl);
   const providerContext = getProviderContext(provider, input.statusCode);
 
-  const systemPrompt = providerContext
-    ? `${BASE_SYSTEM_PROMPT}\n${providerContext}`
-    : BASE_SYSTEM_PROMPT;
+  const systemPrompt = `${
+    providerContext ? `${BASE_SYSTEM_PROMPT}\n${providerContext}` : BASE_SYSTEM_PROMPT
+  }\n\n${UNTRUSTED_INSTRUCTION}`;
+
+  // The request/response bodies are attacker-controlled (a hostile target API
+  // can shape its error response to embed prompt-injection payloads). Wrap them
+  // so the LLM treats them as data, not instructions.
+  const bodyBlob = wrapUntrusted(
+    `**Request Headers (sanitized):**\n${JSON.stringify(safeHeaders, null, 2)}\n\n` +
+      `**Request Body:**\n${JSON.stringify(input.requestBody, null, 2)}\n\n` +
+      `**Error Response Body:**\n${JSON.stringify(input.responseBody, null, 2)}`,
+    { maxLength: 12000 },
+  );
 
   const userMessage = `
 ## Failed API Request
@@ -177,14 +188,7 @@ export async function analyzeError(input: AnalysisInput, llmOverrides?: LLMOverr
 **HTTP Status:** ${input.statusCode}
 **Detected Provider:** ${provider}
 
-**Request Headers (sanitized):**
-${JSON.stringify(safeHeaders, null, 2)}
-
-**Request Body:**
-${JSON.stringify(input.requestBody, null, 2)}
-
-**Error Response Body:**
-${JSON.stringify(input.responseBody, null, 2)}
+${bodyBlob}
 
 Analyze this failure and return your diagnosis as JSON.`;
 

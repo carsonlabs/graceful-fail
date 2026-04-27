@@ -68,10 +68,23 @@ async function invokeClaude(params: InvokeParams, overrides?: LLMOverrides): Pro
   const result = await response.json() as {
     id: string;
     content: Array<{ type: string; text?: string }>;
-    usage?: { input_tokens: number; output_tokens: number };
+    usage?: {
+      input_tokens: number;
+      output_tokens: number;
+      cache_read_input_tokens?: number;
+      cache_creation_input_tokens?: number;
+    };
     model: string;
     stop_reason: string;
   };
+
+  if (result.usage) {
+    const cacheRead = result.usage.cache_read_input_tokens ?? 0;
+    const cacheWrite = result.usage.cache_creation_input_tokens ?? 0;
+    console.log(
+      `[selfheal-llm] in=${result.usage.input_tokens} cached=${cacheRead} write=${cacheWrite} out=${result.usage.output_tokens}`,
+    );
+  }
 
   const textContent = result.content
     .filter((b: { type: string }) => b.type === "text")

@@ -4,6 +4,7 @@ import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 import { ENV } from "./env";
+import { safeRedirectPath } from "../lib/safe-redirect";
 
 export function registerOAuthRoutes(app: Express) {
   // Redirect to GitHub login
@@ -49,8 +50,11 @@ export function registerOAuthRoutes(app: Express) {
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
-      // Decode redirect from state
-      const redirectTo = state ? Buffer.from(state, "base64").toString("utf-8") : "/";
+      // Decode redirect from state, then sanitize: only same-origin paths are
+      // accepted. Previously any base64-decoded string was redirected to,
+      // creating an open-redirect phishing vector on the OAuth endpoint.
+      const decoded = state ? Buffer.from(state, "base64").toString("utf-8") : "/";
+      const redirectTo = safeRedirectPath(decoded, "/");
       res.redirect(302, redirectTo);
     } catch (error) {
       console.error("[OAuth] GitHub callback failed:", error);

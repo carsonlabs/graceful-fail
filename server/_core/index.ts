@@ -16,6 +16,7 @@ import path from "path";
 import { runScan } from "../scanEngine";
 import { rouletteRouter } from "../rouletteRouter";
 import { createX402Router } from "../x402Proxy";
+import { llmTaxRouter } from "../llmTaxRouter";
 import { MonitoringRegistry } from "../monitoring";
 import { ResponseCache } from "../responseCache";
 
@@ -47,6 +48,12 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
 
+  // Trust the single reverse proxy in front of us (Railway/Vercel put one hop
+  // before our app). Without this, `req.ip` returns the proxy's IP and
+  // `X-Forwarded-For` is unsanitized — any client could spoof source IP and
+  // bypass per-IP rate limits by setting `X-Forwarded-For: 1.2.3.4`.
+  app.set("trust proxy", 1);
+
   // Stripe webhook — MUST be registered BEFORE express.json() so it receives the raw body
   // for signature verification. express.json() consumes the body stream irreversibly.
   registerStripeWebhook(app);
@@ -65,6 +72,9 @@ async function startServer() {
 
   // API Roulette — chaos testing endpoint
   app.use(rouletteRouter);
+
+  // llm-tax campaign — anonymized scan submissions + email claim
+  app.use(llmTaxRouter);
 
   // x402 outcome-based pricing — agent-native proxy + heal endpoints
   const monitor = new MonitoringRegistry();
@@ -105,6 +115,7 @@ async function startServer() {
   app.get("/sitemap.xml", (_req, res) => {
     const pages = [
       { loc: "/", priority: "1.0", changefreq: "weekly" },
+      { loc: "/llm-tax", priority: "0.9", changefreq: "weekly" },
       { loc: "/docs", priority: "0.9", changefreq: "weekly" },
       { loc: "/status", priority: "0.7", changefreq: "daily" },
       { loc: "/changelog", priority: "0.6", changefreq: "weekly" },

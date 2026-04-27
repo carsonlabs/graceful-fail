@@ -300,16 +300,19 @@ export default function Home() {
           </div>
 
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-foreground mb-8 leading-[1.1]">
-            MCP agents break in production.{" "}
+            API errors your agents{" "}
             <br className="hidden sm:block" />
-            <span className="text-primary">SelfHeal fixes them at the proxy layer.</span>
+            <span className="text-primary">can fix themselves.</span>
           </h1>
 
-          <p className="text-lg md:text-xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed">
-            Timeout cascades, malformed tool calls, auth drift. SelfHeal is a drop-in
-            proxy that catches the failure, analyzes it with an LLM, and returns a
-            structured fix your agent can retry with. Works with any MCP-compatible
-            framework.
+          <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+            Drop-in proxy that catches MCP and API failures, analyzes them with an LLM, and returns
+            a structured fix your agent can retry with. Timeout cascades, malformed tool calls,
+            auth drift &mdash; gone.
+          </p>
+
+          <p className="text-sm text-primary/90 mb-10 max-w-xl mx-auto leading-relaxed">
+            <span className="font-semibold">Successful calls = free.</span> You only pay credits when SelfHeal actually fixes a failure.
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3 mb-10">

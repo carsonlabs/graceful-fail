@@ -23,6 +23,8 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import AuditReport from "./pages/AuditReport";
 import Scan from "./pages/Scan";
+import LlmTax from "./pages/LlmTax";
+import LlmTaxScan from "./pages/LlmTaxScan";
 
 function Router() {
   return (
@@ -46,6 +48,8 @@ function Router() {
       <Route path="/privacy" component={Privacy} />
       <Route path="/scan" component={Scan} />
       <Route path="/audit/:slug" component={AuditReport} />
+      <Route path="/llm-tax" component={LlmTax} />
+      <Route path="/llm-tax/r/:scanId" component={LlmTaxScan} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

@@ -150,8 +150,9 @@
 
         <article>
           <section>
-            <h1>MCP agents break in production. SelfHeal fixes them at the proxy layer.</h1>
-            <p>72% of production MCP agents fail a reliability benchmark. Timeout cascades, malformed tool calls, auth drift. SelfHeal is a drop-in proxy that catches the failure, analyzes it with an LLM, and returns a structured fix your agent can retry with. Works with any MCP-compatible framework.</p>
+            <h1>API errors your agents can fix themselves.</h1>
+            <p>72% of production MCP agents fail a reliability benchmark. SelfHeal is a drop-in proxy that catches MCP and API failures, analyzes them with an LLM, and returns a structured fix your agent can retry with. Timeout cascades, malformed tool calls, auth drift &mdash; gone. Works with any MCP-compatible framework.</p>
+            <p><strong>Successful calls = free.</strong> You only pay credits when SelfHeal actually fixes a failure.</p>
             <p>Install: <code>pip install graceful-fail</code> or <code>npm install graceful-fail</code></p>
             <p>$29/team/mo flat, pay-per-heal via x402, or 500 calls free. No credit card required.</p>
           </section>
@@ -195,6 +196,11 @@
               <li><strong>x402 Outcome Pricing — $0.003/successful heal (USDC)</strong>: Pay-per-heal via HTTP 402 + Base L2 settlement. Zero subscription, zero auth, zero billing setup. Your agent's wallet IS the API key. Best for high-variance workloads and agent-to-agent commerce.</li>
               <li><strong>Hobby — Free</strong>: 500 requests/month. All features, capped volume. 1 developer, community Discord. For testing and personal agents.</li>
             </ul>
+          </section>
+
+          <section>
+            <h2>Stop paying the LLM tax</h2>
+            <p>Ran <code>npx llm-tax</code> and saw the bloat? <a href="/llm-tax">See the one-line fix on the SelfHeal llm-tax page</a> &mdash; SelfHeal&apos;s normalize feature returns only the fields your agent uses. Free for 500 calls/month.</p>
           </section>
 
           <section id="use-cases">

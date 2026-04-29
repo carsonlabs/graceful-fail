@@ -6,6 +6,7 @@
 dist/
 build/
 *.dist
+out/
 
 # Environment variables
 .env

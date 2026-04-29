@@ -2,8 +2,14 @@
  * OpenAPI 3.1 specification for the SelfHeal API.
  * Served at GET /api/openapi.json — no authentication required.
  */
+import {
+  complianceOpenApiPaths,
+  complianceOpenApiSchemas,
+  complianceOpenApiTag,
+} from "../packages/api/src/openapi";
+
 export function buildOpenApiSpec(baseUrl: string) {
-  return {
+  const spec = {
     openapi: "3.1.0",
     info: {
       title: "SelfHeal API",
@@ -350,4 +356,11 @@ export function buildOpenApiSpec(baseUrl: string) {
       { name: "Legacy", description: "Legacy API key-authenticated endpoints (deprecated)" },
     ],
   };
+
+  // Merge in v2 compliance module fragments.
+  Object.assign(spec.paths, complianceOpenApiPaths());
+  Object.assign(spec.components.schemas, complianceOpenApiSchemas());
+  spec.tags.push(complianceOpenApiTag);
+
+  return spec;
 }

@@ -118,6 +118,30 @@ describe("Compliance REST API", () => {
     expect(res.status).toBe(404);
   });
 
+  it("returns a downloadable PDF receipt with the correct content-type and filename", async () => {
+    await fetch(`${ctx.baseUrl}/api/compliance/erase`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${API_KEY}` },
+      body: JSON.stringify({ user_id: "u_42" }),
+    });
+    const res = await fetch(`${ctx.baseUrl}/api/compliance/proof/u_42.pdf`, {
+      headers: { authorization: `Bearer ${API_KEY}` },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("application/pdf");
+    expect(res.headers.get("content-disposition")).toContain("filename=\"selfheal-deletion-receipt-u_42.pdf\"");
+    const body = Buffer.from(await res.arrayBuffer());
+    expect(body.subarray(0, 4).toString("ascii")).toBe("%PDF");
+    expect(body.length).toBeGreaterThan(2000);
+  });
+
+  it("returns 404 for PDF receipt of an unknown user", async () => {
+    const res = await fetch(`${ctx.baseUrl}/api/compliance/proof/never-existed.pdf`, {
+      headers: { authorization: `Bearer ${API_KEY}` },
+    });
+    expect(res.status).toBe(404);
+  });
+
   it("returns a verifiable signed proof after erasure", async () => {
     await fetch(`${ctx.baseUrl}/api/compliance/erase`, {
       method: "POST",

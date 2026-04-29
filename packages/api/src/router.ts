@@ -2,6 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { z } from "zod";
 import type { SelfhealClient } from "../../sdk/src/compliance.js";
 import type { CascadeResult } from "../../core/src/types.js";
+import { buildDeletionProofPdf, type PdfBrandingOptions } from "../../core/src/pdf.js";
 
 export interface ComplianceRouterOptions {
   client: SelfhealClient;
@@ -10,10 +11,8 @@ export interface ComplianceRouterOptions {
    * any key in this set is allowed. Multi-tenant key-to-tenant lookup comes later.
    */
   apiKeys: string[] | (() => string[]);
-  /**
-   * Base path is decided by the caller via app.use(). The router itself is
-   * mount-point agnostic.
-   */
+  /** Optional branding for the PDF receipt endpoint. */
+  pdfBranding?: PdfBrandingOptions;
 }
 
 const eraseSchema = z.object({
@@ -95,7 +94,33 @@ export function createComplianceRouter(opts: ComplianceRouterOptions): Router {
     }
   });
 
+  // PDF route MUST be declared before the JSON route — Express matches routes
+  // in order and `/proof/:userId` would otherwise consume "u_42.pdf".
+  router.get("/proof/:userId.pdf", async (req, res) => {
+    try {
+      const proof = await opts.client.compliance.getDeletionProof({ userId: req.params.userId });
+      const pdf = await buildDeletionProofPdf(proof, opts.pdfBranding);
+      const safeName = req.params.userId.replace(/[^A-Za-z0-9._-]/g, "_");
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="selfheal-deletion-receipt-${safeName}.pdf"`,
+      );
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("Content-Length", String(pdf.length));
+      res.status(200).send(pdf);
+    } catch (err) {
+      res.status(404).json({ error: "not_found", message: messageOf(err) });
+    }
+  });
+
   router.get("/proof/:userId", async (req, res) => {
+    // Defense-in-depth: also reject any .pdf-suffixed param that slipped past
+    // the route ordering — should never reach here in normal Express usage.
+    if (req.params.userId.endsWith(".pdf")) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
     try {
       const proof = await opts.client.compliance.getDeletionProof({ userId: req.params.userId });
       res.json(proof);

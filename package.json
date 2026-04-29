@@ -11,7 +11,8 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
-    "warroom": "node warroom.js"
+    "warroom": "node warroom.js",
+    "demo:compliance": "tsx scripts/compliance-demo.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",

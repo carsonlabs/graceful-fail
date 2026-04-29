@@ -85,8 +85,8 @@ export function buildMcpServer(opts: BuildMcpServerOptions): McpServer {
       },
     },
     async ({ status }) => {
-      const all = client.compliance.listDeletionHistory();
-      const filtered = !status || status === "all" ? all : all.filter((r) => r.status === status);
+      const filter = status && status !== "all" ? { status } : undefined;
+      const filtered = await client.compliance.listDeletionHistory(filter);
       const summary = filtered.map((r) => ({
         userId: r.userId,
         status: r.status,
@@ -112,7 +112,7 @@ export function buildMcpServer(opts: BuildMcpServerOptions): McpServer {
       },
     },
     async ({ user_id }) => {
-      const record = client.compliance.getDeletionRecord(user_id);
+      const record = await client.compliance.getDeletionRecord(user_id);
       const payload = record
         ? {
             user_id,

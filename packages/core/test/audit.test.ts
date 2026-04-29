@@ -73,6 +73,13 @@ describe("AuditLog", () => {
     expect(v.payload?.userId).toBe("u1");
   });
 
+  it("hashes payloads using JSON-canonical form (undefined keys dropped, key order independent)", async () => {
+    const log = new AuditLog(new InMemoryAuditStore(), SECRET);
+    const a = await log.append({ event: "adapter.succeeded", userId: "u", payload: { adapter: "pg", recordsAffected: 3, error: undefined } });
+    const b = await log.append({ event: "adapter.succeeded", userId: "u", payload: { recordsAffected: 3, adapter: "pg" } });
+    expect(a.payloadHash).toBe(b.payloadHash);
+  });
+
   it("rejects a tampered receipt", async () => {
     const log = new AuditLog(new InMemoryAuditStore(), SECRET);
     const receipt = log.signReceipt({ userId: "u1", status: "success" });

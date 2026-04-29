@@ -2,6 +2,7 @@ import {
   AuditLog,
   CascadeEngine,
   InMemoryAuditStore,
+  InMemoryHistoryStore,
   PgVectorAdapter,
   PineconeAdapter,
   PostgresAdapter,
@@ -12,6 +13,7 @@ import {
   type CascadeResult,
   type DeletionProof,
   type EraseReason,
+  type HistoryStore,
   type PgClientLike,
   type PineconeIndexLike,
   type PostgresRule,
@@ -45,6 +47,7 @@ export interface SelfhealOptions {
   apiKey: string;
   auditSecret?: string;
   auditStore?: AuditStore;
+  historyStore?: HistoryStore;
   cascade?: CascadeOptions;
 }
 
@@ -55,23 +58,19 @@ export interface EraseUserInput {
   metadata?: Record<string, unknown>;
 }
 
-interface CascadeRecord {
-  cascade: CascadeResult;
-  config: ComplianceConfig;
-}
-
 class ComplianceClient {
   private config: ComplianceConfig = {};
   private readonly audit: AuditLog;
   private readonly cascadeOpts: CascadeOptions;
-  private readonly history = new Map<string, CascadeRecord>();
+  private readonly historyStore: HistoryStore;
 
   constructor(opts: SelfhealOptions) {
     if (!opts.apiKey) throw new Error("selfheal: apiKey is required");
     const secret = opts.auditSecret ?? deriveSecretFromApiKey(opts.apiKey);
-    const store = opts.auditStore ?? new InMemoryAuditStore();
-    this.audit = new AuditLog(store, secret);
+    const auditStore = opts.auditStore ?? new InMemoryAuditStore();
+    this.audit = new AuditLog(auditStore, secret);
     this.cascadeOpts = opts.cascade ?? {};
+    this.historyStore = opts.historyStore ?? new InMemoryHistoryStore();
   }
 
   configure(config: ComplianceConfig): void {
@@ -103,29 +102,25 @@ class ComplianceClient {
     const adapters = this.buildAdapters();
     const engine = new CascadeEngine(adapters, this.audit, this.cascadeOpts);
     const result = await engine.erase(input);
-    this.history.set(input.userId, { cascade: result, config: this.config });
+    await this.historyStore.record(result);
     return result;
   }
 
   async getDeletionProof(input: { userId: string }): Promise<DeletionProof> {
-    const record = this.history.get(input.userId);
-    if (!record) {
+    const cascade = await this.historyStore.latest(input.userId);
+    if (!cascade) {
       throw new Error(`No deletion record found for userId=${input.userId}`);
     }
     const entries = await this.audit.list({ userId: input.userId });
-    return buildDeletionProof({
-      cascade: record.cascade,
-      auditEntries: entries,
-      audit: this.audit,
-    });
+    return buildDeletionProof({ cascade, auditEntries: entries, audit: this.audit });
   }
 
-  listDeletionHistory(): CascadeResult[] {
-    return Array.from(this.history.values()).map((r) => r.cascade);
+  async listDeletionHistory(filter?: { status?: CascadeResult["status"] }): Promise<CascadeResult[]> {
+    return this.historyStore.list(filter);
   }
 
-  getDeletionRecord(userId: string): CascadeResult | null {
-    return this.history.get(userId)?.cascade ?? null;
+  async getDeletionRecord(userId: string): Promise<CascadeResult | null> {
+    return this.historyStore.latest(userId);
   }
 
   verifyProof(proof: DeletionProof): { valid: boolean; reason?: string } {

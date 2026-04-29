@@ -1,0 +1,18 @@
+# Fallback config if Railway falls back to Nixpacks instead of using the
+# Dockerfile. Same outcome: install workspace deps, build all packages
+# topologically, bundle the v1 server, then run `pnpm start`.
+
+[phases.setup]
+nixPkgs = ["nodejs_22", "pnpm"]
+
+[phases.install]
+cmds = ["pnpm install --frozen-lockfile"]
+
+[phases.build]
+cmds = [
+  "pnpm -r --workspace-concurrency=1 build",
+  "pnpm build",
+]
+
+[start]
+cmd = "pnpm start"

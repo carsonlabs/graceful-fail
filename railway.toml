@@ -1,0 +1,20 @@
+# Railway deployment config for selfheal (v1 resilience + v2 compliance).
+# Builds via the repo Dockerfile so v2 packages are built before the v1 server
+# is bundled.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Drizzle migrations run on start (see package.json `start` script). Compliance
+# tables are added by packages/core/migrations/001_compliance_init.sql — apply
+# that separately via `psql $SELFHEAL_PG_URL -f ...` on first deploy.
+startCommand = "pnpm start"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+# Health check: the v1 server registers GET /api/openapi.json (public, no auth).
+# Once a /healthz endpoint exists prefer that.
+healthcheckPath = "/api/openapi.json"
+healthcheckTimeout = 30

@@ -19,6 +19,7 @@ import { createX402Router } from "../x402Proxy";
 import { llmTaxRouter } from "../llmTaxRouter";
 import { MonitoringRegistry } from "../monitoring";
 import { ResponseCache } from "../responseCache";
+import { mountComplianceFromEnv } from "../../packages/api/src/index";
 
 // Resolve project root — works from both server/_core/ (dev) and dist/ (prod)
 const PROJECT_ROOT = process.env.NODE_ENV === "production"
@@ -75,6 +76,15 @@ async function startServer() {
 
   // llm-tax campaign — anonymized scan submissions + email claim
   app.use(llmTaxRouter);
+
+  // selfheal v2 compliance module — right-to-erasure cascade + signed audit log.
+  // No-ops silently when SELFHEAL_API_KEY is unset; throws on partial config.
+  const compliance = await mountComplianceFromEnv(app, "/api/compliance");
+  if (compliance.enabled) {
+    console.log("[compliance] mounted at /api/compliance");
+  } else {
+    console.log(`[compliance] disabled (${compliance.reason})`);
+  }
 
   // x402 outcome-based pricing — agent-native proxy + heal endpoints
   const monitor = new MonitoringRegistry();

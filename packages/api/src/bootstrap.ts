@@ -1,7 +1,7 @@
 import type { Express } from "express";
-import { selfheal } from "../../sdk/src/index.js";
-import type { ComplianceConfig } from "../../sdk/src/compliance.js";
-import { SqlAuditStore, SqlHistoryStore, type SqlClient } from "../../core/src/index.js";
+import { selfheal } from "@selfheal/sdk";
+import type { ComplianceConfig } from "@selfheal/sdk";
+import { SqlAuditStore, SqlHistoryStore, type SqlClient } from "@selfheal/core";
 import { createComplianceRouter } from "./router.js";
 
 interface PgClient extends SqlClient {

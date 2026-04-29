@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import express from "express";
 import { createServer, type Server } from "node:http";
 import { AddressInfo } from "node:net";
-import { selfheal } from "../../sdk/src/index.js";
+import { selfheal } from "@selfheal/sdk";
 import { createComplianceRouter } from "../src/router.js";
 
 interface Row {

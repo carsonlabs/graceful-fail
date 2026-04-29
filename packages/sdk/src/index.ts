@@ -1,6 +1,8 @@
 export { selfheal } from "./compliance.js";
 export type {
   SelfhealOptions,
+  SelfhealClient,
+  ComplianceClient,
   ComplianceConfig,
   PostgresConfig,
   PgVectorConfig,
@@ -13,4 +15,4 @@ export type {
   DeletionProof,
   AuditEntry,
   EraseReason,
-} from "../../core/src/types.js";
+} from "@selfheal/core";

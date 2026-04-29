@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { selfheal } from "../../sdk/src/index.js";
-import type { ComplianceConfig } from "../../sdk/src/compliance.js";
+import { selfheal } from "@selfheal/sdk";
+import type { ComplianceConfig } from "@selfheal/sdk";
 import { buildMcpServer } from "./server.js";
 
 interface PgClient {

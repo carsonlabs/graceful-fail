@@ -12,7 +12,7 @@ import {
   SqlHistoryStore,
   buildDeletionProof,
   type SqlClient,
-} from "../src/index.js";
+} from "@selfheal/core";
 
 const SECRET = "a".repeat(48);
 const __dirname = dirname(fileURLToPath(import.meta.url));

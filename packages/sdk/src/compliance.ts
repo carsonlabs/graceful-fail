@@ -17,7 +17,7 @@ import {
   type PgClientLike,
   type PineconeIndexLike,
   type PostgresRule,
-} from "../../core/src/index.js";
+} from "@selfheal/core";
 
 export interface PostgresConfig {
   client: PgClientLike;

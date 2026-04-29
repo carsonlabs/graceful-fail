@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { selfheal } from "../src/index.js";
+import { selfheal } from "@selfheal/sdk";
 
 interface Row {
   user_id: string;

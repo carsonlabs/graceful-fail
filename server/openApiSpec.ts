@@ -6,7 +6,7 @@ import {
   complianceOpenApiPaths,
   complianceOpenApiSchemas,
   complianceOpenApiTag,
-} from "../packages/api/src/openapi";
+} from "@selfheal/api";
 
 export function buildOpenApiSpec(baseUrl: string) {
   const spec = {

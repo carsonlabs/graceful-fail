@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { SelfhealClient } from "../../sdk/src/compliance.js";
-import type { EraseReason } from "../../core/src/types.js";
+import type { SelfhealClient } from "@selfheal/sdk";
+import type { EraseReason } from "@selfheal/core";
 
 export interface BuildMcpServerOptions {
   client: SelfhealClient;

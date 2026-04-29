@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { buildMcpServer } from "../src/server.js";
-import { selfheal } from "../../sdk/src/index.js";
+import { selfheal } from "@selfheal/sdk";
 
 interface Row {
   user_id: string;

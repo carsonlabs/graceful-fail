@@ -11,13 +11,13 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { newDb } from "pg-mem";
-import { selfheal } from "../packages/sdk/src/index";
+import { selfheal } from "@selfheal/sdk";
 import {
   SqlAuditStore,
   SqlHistoryStore,
   buildDeletionProofPdf,
   type SqlClient,
-} from "../packages/core/src/index";
+} from "@selfheal/core";
 import { readFileSync } from "node:fs";
 
 const MIGRATION_PATH = resolve(import.meta.dirname, "..", "packages/core/migrations/001_compliance_init.sql");

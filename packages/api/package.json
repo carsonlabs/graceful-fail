@@ -1,14 +1,73 @@
 {
   "name": "@selfheal/api",
   "version": "0.1.0",
+  "description": "Express router exposing the selfheal compliance cascade over HTTP. Drop into any Express app to ship GDPR/CCPA right-to-erasure with a signed audit trail and PDF receipt — auth via bearer token, OpenAPI 3.1 spec included.",
   "type": "module",
   "license": "MIT",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "homepage": "https://selfheal.dev/compliance",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/carsonlabs/graceful-fail.git",
+    "directory": "packages/api"
+  },
+  "bugs": "https://github.com/carsonlabs/graceful-fail/issues",
+  "keywords": [
+    "express",
+    "rest",
+    "openapi",
+    "gdpr",
+    "ccpa",
+    "right-to-erasure",
+    "compliance",
+    "ai-agents",
+    "selfheal"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
-    "test": "vitest run"
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "@selfheal/sdk": "workspace:*",
+    "@selfheal/core": "workspace:*",
+    "zod": "^4.1.12"
+  },
+  "peerDependencies": {
+    "express": "^4.21.0 || ^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "pg": {
+      "optional": true
+    },
+    "@pinecone-database/pinecone": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "express": "^4.21.2",
+    "tsup": "^8.5.1",
+    "typescript": "5.9.3",
+    "vitest": "^2.1.4"
   }
 }

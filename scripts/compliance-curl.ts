@@ -10,10 +10,10 @@ import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { newDb } from "pg-mem";
 import { readFileSync } from "node:fs";
-import { selfheal } from "../packages/sdk/src/index";
-import { SqlAuditStore, SqlHistoryStore } from "../packages/core/src/index";
-import { createComplianceRouter } from "../packages/api/src/index";
-import type { SqlClient } from "../packages/core/src/index";
+import { selfheal } from "@selfheal/sdk";
+import { SqlAuditStore, SqlHistoryStore } from "@selfheal/core";
+import { createComplianceRouter } from "@selfheal/api";
+import type { SqlClient } from "@selfheal/core";
 
 interface PgMemClient extends SqlClient {
   query<T = Record<string, unknown>>(text: string, values?: unknown[]): Promise<{ rows: T[]; rowCount: number | null }>;

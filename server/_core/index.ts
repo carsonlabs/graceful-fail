@@ -19,7 +19,7 @@ import { createX402Router } from "../x402Proxy";
 import { llmTaxRouter } from "../llmTaxRouter";
 import { MonitoringRegistry } from "../monitoring";
 import { ResponseCache } from "../responseCache";
-import { mountComplianceFromEnv } from "../../packages/api/src/index";
+import { mountComplianceFromEnv } from "@selfheal/api";
 
 // Resolve project root — works from both server/_core/ (dev) and dist/ (prod)
 const PROJECT_ROOT = process.env.NODE_ENV === "production"

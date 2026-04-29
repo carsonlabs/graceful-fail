@@ -1,8 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { z } from "zod";
-import type { SelfhealClient } from "../../sdk/src/compliance.js";
-import type { CascadeResult } from "../../core/src/types.js";
-import { buildDeletionProofPdf, type PdfBrandingOptions } from "../../core/src/pdf.js";
+import type { SelfhealClient } from "@selfheal/sdk";
+import { buildDeletionProofPdf, type CascadeResult, type PdfBrandingOptions } from "@selfheal/core";
 
 export interface ComplianceRouterOptions {
   client: SelfhealClient;

@@ -1,17 +1,71 @@
 {
   "name": "@selfheal/mcp-server",
   "version": "0.1.0",
+  "description": "Model Context Protocol server for selfheal compliance. Exposes the right-to-erasure cascade as four MCP tools so agents can trigger GDPR/CCPA deletion themselves when they detect a deletion intent.",
   "type": "module",
   "license": "MIT",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "homepage": "https://selfheal.dev/compliance",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/carsonlabs/graceful-fail.git",
+    "directory": "packages/mcp-server"
+  },
+  "bugs": "https://github.com/carsonlabs/graceful-fail/issues",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "gdpr",
+    "ccpa",
+    "right-to-erasure",
+    "compliance",
+    "ai-agents",
+    "selfheal"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "bin": {
-    "selfheal-mcp": "./src/bin.ts"
+    "selfheal-mcp": "./dist/bin.js"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
-    "test": "vitest run"
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "@selfheal/sdk": "workspace:*",
+    "@selfheal/core": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.1.12"
+  },
+  "peerDependenciesMeta": {
+    "pg": {
+      "optional": true
+    },
+    "@pinecone-database/pinecone": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "5.9.3",
+    "vitest": "^2.1.4"
   }
 }

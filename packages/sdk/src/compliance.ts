@@ -120,6 +120,14 @@ class ComplianceClient {
     });
   }
 
+  listDeletionHistory(): CascadeResult[] {
+    return Array.from(this.history.values()).map((r) => r.cascade);
+  }
+
+  getDeletionRecord(userId: string): CascadeResult | null {
+    return this.history.get(userId)?.cascade ?? null;
+  }
+
   verifyProof(proof: DeletionProof): { valid: boolean; reason?: string } {
     const chain = this.audit.verify(proof.auditEntries);
     if (!chain.valid) return { valid: false, reason: chain.reason };
@@ -132,6 +140,8 @@ class ComplianceClient {
 export interface SelfhealClient {
   compliance: ComplianceClient;
 }
+
+export type { ComplianceClient };
 
 export function selfheal(opts: SelfhealOptions): SelfhealClient {
   return { compliance: new ComplianceClient(opts) };
